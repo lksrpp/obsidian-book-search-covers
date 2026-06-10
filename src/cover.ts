@@ -22,8 +22,10 @@ export interface CoverCandidate {
 	/** Remote https URL of the cover image. */
 	url: string;
 	source: "google" | "apple";
-	/** Short human label shown under the image in the picker. */
-	label: string;
+	/** Caption lines shown under the image in the picker. */
+	title: string;
+	author?: string;
+	year?: string;
 }
 
 /**
@@ -59,9 +61,9 @@ async function googleCandidates(
 			.map((r) => ({
 				url: r.providerCoverUrl as string,
 				source: "google" as const,
-				label: [r.title, yearFrom(r.publishedDate), r.publisher]
-					.filter((x): x is string => !!x)
-					.join(" · "),
+				title: r.title,
+				author: r.authors[0],
+				year: yearFrom(r.publishedDate),
 			}));
 	} catch {
 		return [];
@@ -80,7 +82,9 @@ async function appleCandidates(
 	return candidates.map((c) => ({
 		url: c.artworkUrl,
 		source: "apple" as const,
-		label: [c.trackName, c.artistName].filter((x) => x).join(" — "),
+		title: c.trackName,
+		author: c.artistName || undefined,
+		year: yearFrom(c.releaseDate),
 	}));
 }
 

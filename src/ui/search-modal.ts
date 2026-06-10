@@ -38,7 +38,7 @@ export class BookSearchModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.modalEl.addClass("bsc-modal", "bsc-search-modal");
+		this.modalEl.addClass("bsc-modal");
 		this.titleEl.setText("Search for a book");
 
 		this.inputEl = this.contentEl.createEl("input", {
@@ -64,16 +64,11 @@ export class BookSearchModal extends Modal {
 				this.coverMode = mode;
 			},
 		});
-		const hints = footer.createDiv({ cls: "bsc-key-hints" });
-		for (const [key, label] of [
+		addKeyHints(footer, [
 			["↑↓", "navigate"],
 			["↵", "create note"],
 			["esc", "close"],
-		] as const) {
-			const hint = hints.createSpan({ cls: "bsc-key-hint" });
-			hint.createEl("kbd", { text: key });
-			hint.appendText(` ${label}`);
-		}
+		]);
 
 		const debounced = debounce(() => void this.runSearch(), DEBOUNCE_MS, true);
 		this.inputEl.addEventListener("input", () => {
@@ -253,6 +248,19 @@ export function addOptionsRow(
 		.addOption("download", "Download")
 		.setValue(opts.coverMode)
 		.onChange((v) => opts.onCoverMode(v as CoverMode));
+}
+
+/** Render the `kbd · label` hint group used in both modal footers. */
+export function addKeyHints(
+	parent: HTMLElement,
+	hints: ReadonlyArray<readonly [key: string, label: string]>,
+): void {
+	const el = parent.createDiv({ cls: "bsc-key-hints" });
+	for (const [key, label] of hints) {
+		const hint = el.createSpan({ cls: "bsc-key-hint" });
+		hint.createEl("kbd", { text: key });
+		hint.appendText(` ${label}`);
+	}
 }
 
 /** Open the search modal, calling `onPick` with the chosen book + overrides. */

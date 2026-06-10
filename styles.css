@@ -1,12 +1,6 @@
 /* ── Shared modal layout (search modal + cover picker) ─────────────────── */
+/* Both modals sized like Obsidian's own search prompts (quick switcher). */
 .bsc-modal {
-	width: var(--dialog-max-width);
-}
-/* The result list reads best as a column; the full dialog width only adds
-   empty space to the right of the text. Sized like Obsidian's own search
-   prompts (quick switcher); the cover picker keeps the wide layout for its
-   grid. */
-.bsc-search-modal {
 	width: min(var(--prompt-width), var(--dialog-max-width));
 }
 .bsc-query-input {
@@ -228,35 +222,65 @@
 	height: auto;
 	padding: 0.6em 0.5em;
 	cursor: pointer;
+	box-shadow: none;
+	background: transparent;
+	transition: background-color 100ms ease;
 }
 .bsc-cover-card:hover {
 	background-color: var(--background-modifier-hover);
+}
+.bsc-cover-card.is-selected {
+	background-color: hsla(var(--interactive-accent-hsl), 0.15);
+	box-shadow: inset 0 0 0 2px var(--interactive-accent);
 }
 .bsc-cover-card-img {
 	width: 120px;
 	height: 180px;
 	object-fit: contain;
-	border-radius: 3px;
+	border-radius: 4px;
 	background-color: var(--background-modifier-border);
+	box-shadow: var(--shadow-s);
+	opacity: 0;
+	transition: opacity 200ms ease;
 }
-.bsc-cover-card-badge {
-	font-size: var(--font-smallest);
-	font-weight: var(--font-semibold);
-	padding: 0.05em 0.5em;
-	border-radius: var(--radius-s);
-	background-color: var(--background-modifier-border);
-	color: var(--text-muted);
+.bsc-cover-card-img.is-loaded {
+	opacity: 1;
 }
-.bsc-cover-card-label {
-	font-size: var(--font-smaller);
-	color: var(--text-muted);
+/* Caption: title / author / year / API, one per line. The card is a <button>,
+   so white-space must be reset for the lines to wrap and clamp. */
+.bsc-cover-card-caption {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1em;
+	min-width: 0;
 	text-align: center;
+	white-space: normal;
+}
+.bsc-cover-card-title {
+	font-size: var(--font-smaller);
+	font-weight: var(--font-semibold);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
-	white-space: normal;
+}
+.bsc-cover-card-author {
+	font-size: var(--font-smaller);
+	color: var(--text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+}
+.bsc-cover-card-year {
+	font-size: var(--font-smallest);
+	color: var(--text-faint);
+}
+.bsc-cover-card-api {
+	font-size: var(--font-smallest);
+	color: var(--text-faint);
 }
 
 /* ── Settings ──────────────────────────────────────────────────────────── */

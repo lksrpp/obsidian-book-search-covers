@@ -16,6 +16,8 @@ import { requestUrl } from "obsidian";
 export interface AppleCandidate {
 	trackName: string;
 	artistName: string;
+	/** ISO release date, when Apple provides one. */
+	releaseDate?: string;
 	/** Hi-res artwork URL derived from Apple's thumbnail URL. */
 	artworkUrl: string;
 }
@@ -213,6 +215,7 @@ interface ItunesResult {
 	artistName?: unknown;
 	artworkUrl100?: unknown;
 	artworkUrl60?: unknown;
+	releaseDate?: unknown;
 }
 
 export function parseAppleResults(body: unknown, size: number): AppleCandidate[] {
@@ -231,7 +234,12 @@ export function parseAppleResults(body: unknown, size: number): AppleCandidate[]
 					? r.artworkUrl60
 					: null;
 		if (!trackName || !thumb) continue;
-		out.push({ trackName, artistName, artworkUrl: resizeArtworkUrl(thumb, size) });
+		out.push({
+			trackName,
+			artistName,
+			releaseDate: typeof r.releaseDate === "string" ? r.releaseDate : undefined,
+			artworkUrl: resizeArtworkUrl(thumb, size),
+		});
 	}
 	return out;
 }
