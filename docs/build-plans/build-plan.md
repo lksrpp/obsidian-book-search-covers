@@ -118,9 +118,11 @@ a few plugin-side additions are needed to reproduce it faithfully:
       ```
       → `  - "[[Eliezer Yudkowsky]]"` / `  - "[[Nate Soares]]"`. Decide indent
       handling and how it interacts with the frontmatter-escaping in `renderNote`.
+      Required: Research best practices, probably some guidance available.
 - [ ] Consider companion list/link variables in the same spirit if needed
       (`{{categoriesYamlList}}`, alias for the full title, etc.) once the owner's
       real template is finalized.
+- [ ] Discuss: Including a link to a file in the fault (e.g., in a template folder) that allows easier editing of templates and re-using it
 
 ## Phase 3 — tests & release
 

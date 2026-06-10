@@ -120,6 +120,12 @@ interface Scored {
 	seriesMatch: boolean;
 }
 
+/** Stable "same book" key: normalized title + artist token sets. */
+function editionKey(c: AppleCandidate): string {
+	const norm = (s: string) => [...normalizeTokens(s)].sort().join(" ");
+	return `${norm(c.trackName)}|${norm(c.artistName)}`;
+}
+
 /**
  * Pick the best Apple candidate, or 'none'. See the file header for the bias
  * toward under-picking. The ladder: drop summaries → score by title overlap →
@@ -127,25 +133,51 @@ interface Scored {
  * series number first, then author; otherwise bail to 'none'.
  */
 export function pickBest(book: BookForPick, candidates: AppleCandidate[]): PickResult {
-	const titleTokens = normalizeTokens(bookTitleText(book));
+	// Apple's trackName may or may not include the subtitle, while the search
+	// provider (Google) gives title + subtitle separately. Score each candidate
+	// against BOTH the bare title and title+subtitle and take the higher overlap,
+	// so a subtitle present on only one side doesn't sink an otherwise exact match.
+	const titleOnlyTokens = normalizeTokens(book.title);
+	const titleFullTokens = normalizeTokens(bookTitleText(book));
 	const seriesNum = parseSeriesNumber(book.seriesNumber);
 
 	const scored: Scored[] = candidates
 		.filter((c) => !isSummaryShaped(c.trackName))
-		.map((c) => ({
-			candidate: c,
-			overlap: jaccard(titleTokens, normalizeTokens(c.trackName)),
-			authorMatch: authorMatches(book, c),
-			seriesMatch: seriesNum != null && titleHasSeriesNumber(c, seriesNum),
-		}));
+		.map((c) => {
+			const candTokens = normalizeTokens(c.trackName);
+			return {
+				candidate: c,
+				overlap: Math.max(
+					jaccard(titleOnlyTokens, candTokens),
+					jaccard(titleFullTokens, candTokens),
+				),
+				authorMatch: authorMatches(book, c),
+				seriesMatch: seriesNum != null && titleHasSeriesNumber(c, seriesNum),
+			};
+		});
 
 	if (scored.length === 0) return { kind: "none" };
 
 	scored.sort((a, b) => b.overlap - a.overlap);
-	const best = scored[0];
+
+	// Collapse duplicate editions. Apple lists the same book several times
+	// (paperback/hardcover/regional store), all with identical title + artist.
+	// Those are the same book, so any cover is correct — dedupe before judging
+	// "contention", otherwise three identical editions look like an unresolvable
+	// tie and the under-pick bias would (wrongly) bail to 'none'.
+	const distinct: Scored[] = [];
+	const seen = new Set<string>();
+	for (const s of scored) {
+		const key = editionKey(s.candidate);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		distinct.push(s);
+	}
+
+	const best = distinct[0];
 	if (!best || best.overlap < MIN_OVERLAP) return { kind: "none" };
 
-	const contention = scored.filter((s) => best.overlap - s.overlap < TIE_BAND);
+	const contention = distinct.filter((s) => best.overlap - s.overlap < TIE_BAND);
 	if (contention.length === 1 && contention[0]) {
 		return { kind: "apple", candidate: contention[0].candidate };
 	}

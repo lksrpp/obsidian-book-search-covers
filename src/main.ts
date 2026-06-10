@@ -119,6 +119,14 @@ export default class BookSearchCoverPlugin extends Plugin {
 /** Pull a single author string from frontmatter (`author` or `authors`). */
 function pickAuthor(fm: Record<string, unknown>): string {
 	const raw = fm.author ?? fm.authors;
-	if (Array.isArray(raw)) return typeof raw[0] === "string" ? raw[0] : "";
-	return typeof raw === "string" ? raw : "";
+	const first = Array.isArray(raw)
+		? raw.find((x): x is string => typeof x === "string" && x.trim() !== "")
+		: raw;
+	return typeof first === "string" ? stripWikiLink(first) : "";
+}
+
+/** `[[Eliezer Yudkowsky]]` / `[[target|Alias]]` → plain name; passes others through. */
+function stripWikiLink(s: string): string {
+	const m = s.trim().match(/^\[\[(?:[^|\]]*\|)?([^\]]+)\]\]$/);
+	return (m?.[1] ?? s).trim();
 }
