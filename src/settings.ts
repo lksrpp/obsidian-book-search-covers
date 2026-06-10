@@ -175,20 +175,24 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("Covers").setHeading();
 
 		new Setting(containerEl)
-			.setName("Download covers into the vault")
-			.setDesc(
-				"On: the cover image is saved to the cover folder and embedded locally. Off: notes link the remote image URL. Can be overridden per search.",
-			)
-			.addToggle((t) =>
-				t.setValue(s.coverMode === "download").onChange(async (v) => {
-					s.coverMode = v ? "download" : "link";
-					await this.plugin.saveSettings();
-				}),
+			.setName("Cover storage")
+			.setDesc("Can be overridden per search in the modal.")
+			.addDropdown((d) =>
+				d
+					.addOption("link", "Link the remote image URL")
+					.addOption("download", "Download into the vault")
+					.setValue(s.coverMode)
+					.onChange(async (v) => {
+						s.coverMode = v as CoverMode;
+						await this.plugin.saveSettings();
+					}),
 			);
 
 		new Setting(containerEl)
 			.setName("Cover folder")
-			.setDesc("Where downloaded covers are stored.")
+			.setDesc(
+				"Where downloaded covers are stored — also when downloading is only chosen per search.",
+			)
 			.addText((t) => {
 				t.setValue(s.coverFolder).onChange(async (v) => {
 					s.coverFolder = v.trim() || "covers";

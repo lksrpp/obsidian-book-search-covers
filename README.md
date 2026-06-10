@@ -1,4 +1,4 @@
-# Book Search & Cover
+# Book Search & Covers
 
 An Obsidian plugin that searches for a book, lets you pick the right edition from
 a rich result list, and creates a note from your own template — with a

@@ -1,4 +1,4 @@
-# Build plan — Book Search & Cover
+# Build plan — Book Search & Covers
 
 Status: **scaffolded** (v0.1.0). This file is the implementation roadmap.
 

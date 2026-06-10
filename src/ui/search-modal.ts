@@ -4,7 +4,7 @@
 // cover-storage mode from settings are only defaults — both can be overridden
 // here for this search.
 
-import { App, debounce, DropdownComponent, Modal, ToggleComponent } from "obsidian";
+import { App, debounce, DropdownComponent, Modal } from "obsidian";
 import { type BookResult, yearOf } from "../model";
 import { searchBooks } from "../search";
 import { type BookSearchCoverSettings, type CoverMode, STORES } from "../settings";
@@ -20,7 +20,7 @@ const DEBOUNCE_MS = 600;
 
 export class BookSearchModal extends Modal {
 	private country: string;
-	private download: boolean;
+	private coverMode: CoverMode;
 	private results: BookResult[] = [];
 	private selected = -1;
 	private generation = 0;
@@ -35,7 +35,7 @@ export class BookSearchModal extends Modal {
 	) {
 		super(app);
 		this.country = settings.preferredCountry;
-		this.download = settings.coverMode === "download";
+		this.coverMode = settings.coverMode;
 	}
 
 	onOpen(): void {
@@ -50,13 +50,13 @@ export class BookSearchModal extends Modal {
 
 		addOptionsRow(this.contentEl, {
 			country: this.country,
-			download: this.download,
+			coverMode: this.coverMode,
 			onCountry: (code) => {
 				this.country = code;
 				void this.runSearch();
 			},
-			onDownload: (v) => {
-				this.download = v;
+			onCoverMode: (mode) => {
+				this.coverMode = mode;
 			},
 		});
 
@@ -159,23 +159,23 @@ export class BookSearchModal extends Modal {
 		this.close();
 		this.onPick(book, {
 			country: this.country,
-			coverMode: this.download ? "download" : "link",
+			coverMode: this.coverMode,
 		});
 	}
 }
 
 /**
  * The options row shared by the search modal and the cover picker, so both
- * modals read the same way: a store dropdown and a download toggle, defaulted
- * from settings, applying to this invocation only.
+ * modals read the same way: a store dropdown and a cover-storage dropdown,
+ * defaulted from settings, applying to this invocation only.
  */
 export function addOptionsRow(
 	parent: HTMLElement,
 	opts: {
 		country: string;
-		download: boolean;
+		coverMode: CoverMode;
 		onCountry: (code: string) => void;
-		onDownload: (download: boolean) => void;
+		onCoverMode: (mode: CoverMode) => void;
 	},
 ): void {
 	const row = parent.createDiv({ cls: "bsc-options-row" });
@@ -189,9 +189,13 @@ export function addOptionsRow(
 	}
 	dropdown.setValue(opts.country).onChange(opts.onCountry);
 
-	const dlOpt = row.createDiv({ cls: "bsc-option" });
-	dlOpt.createEl("label", { text: "Download cover" });
-	new ToggleComponent(dlOpt).setValue(opts.download).onChange(opts.onDownload);
+	const coverOpt = row.createDiv({ cls: "bsc-option" });
+	coverOpt.createEl("label", { text: "Cover" });
+	new DropdownComponent(coverOpt)
+		.addOption("link", "Link URL")
+		.addOption("download", "Download")
+		.setValue(opts.coverMode)
+		.onChange((v) => opts.onCoverMode(v as CoverMode));
 }
 
 /** Open the search modal, calling `onPick` with the chosen book + overrides. */

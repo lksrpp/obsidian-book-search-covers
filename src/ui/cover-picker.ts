@@ -1,7 +1,7 @@
 // Cover picker: a grid of candidate covers from Google and Apple, each with a
 // source badge and a short label, so the user can compare and pick by eye.
-// Shares the options row (store + download override) with the search modal —
-// changing the store re-queries both sources.
+// Shares the options row (store + cover-storage override) with the search
+// modal — changing the store re-queries both sources.
 
 import { App, Modal } from "obsidian";
 import type { CoverCandidate } from "../cover";
@@ -15,7 +15,7 @@ const SOURCE_NAMES: Record<CoverCandidate["source"], string> = {
 
 export class CoverPickerModal extends Modal {
 	private country: string;
-	private download: boolean;
+	private coverMode: CoverMode;
 	private generation = 0;
 	private statusEl!: HTMLElement;
 	private gridEl!: HTMLElement;
@@ -29,7 +29,7 @@ export class CoverPickerModal extends Modal {
 	) {
 		super(app);
 		this.country = settings.preferredCountry;
-		this.download = settings.coverMode === "download";
+		this.coverMode = settings.coverMode;
 	}
 
 	onOpen(): void {
@@ -38,13 +38,13 @@ export class CoverPickerModal extends Modal {
 
 		addOptionsRow(this.contentEl, {
 			country: this.country,
-			download: this.download,
+			coverMode: this.coverMode,
 			onCountry: (code) => {
 				this.country = code;
 				void this.load();
 			},
-			onDownload: (v) => {
-				this.download = v;
+			onCoverMode: (mode) => {
+				this.coverMode = mode;
 			},
 		});
 
@@ -82,7 +82,7 @@ export class CoverPickerModal extends Modal {
 			card.createDiv({ cls: "bsc-cover-card-label", text: candidate.label });
 			card.addEventListener("click", () => {
 				this.close();
-				this.onPick(candidate, this.download ? "download" : "link");
+				this.onPick(candidate, this.coverMode);
 			});
 		}
 	}
