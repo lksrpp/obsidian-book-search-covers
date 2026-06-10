@@ -1,0 +1,15 @@
+# build output (shipped as a release asset, not committed)
+main.js
+*.js.map
+
+# deps
+node_modules/
+
+# plugin runtime data (local settings, may hold the API key)
+data.json
+
+# os
+.DS_Store
+
+# personal sample notes — local dev reference only, not for the public repo
+docs/sample book notes/

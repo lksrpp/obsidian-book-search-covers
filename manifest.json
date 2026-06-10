@@ -1,0 +1,10 @@
+{
+	"id": "book-search-cover",
+	"name": "Book Search & Cover",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.7",
+	"description": "Search books and create notes from a template, with high-resolution covers.",
+	"author": "lksrpp",
+	"authorUrl": "https://github.com/lksrpp",
+	"isDesktopOnly": false
+}
