@@ -8,7 +8,7 @@ import type { BookResult } from "../model";
 const ENDPOINT = "https://openlibrary.org/search.json";
 const LIMIT = 5;
 // Open Library asks for a descriptive User-Agent with contact info.
-const USER_AGENT = "obsidian-book-search-cover (https://github.com/lksrpp)";
+const USER_AGENT = "obsidian-book-search-covers (https://github.com/lksrpp)";
 
 interface OlDoc {
 	title?: string;

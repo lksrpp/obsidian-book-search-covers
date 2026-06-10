@@ -21,6 +21,32 @@ import { type BookResult, yearOf, preferredIsbn } from "./model";
 export type TemplateVars = Record<string, string | string[]>;
 
 /**
+ * Built-in note template, used whenever no template file is configured (or the
+ * configured file is missing). Also the starting content for the "create
+ * template file" button in the settings tab.
+ */
+export const DEFAULT_TEMPLATE = `---
+title: "{{title}}"
+author:
+{{authorsYamlLinks}}
+publisher: "{{publisher}}"
+published: {{year}}
+pages: {{pageCount}}
+isbn: "{{isbn}}"
+categories:
+{{categoriesYamlList}}
+cover: "{{cover}}"
+tags: [book]
+---
+
+![cover]({{cover}})
+
+# {{title}}
+
+{{descriptionCallout}}
+`;
+
+/**
  * User-facing reference of every template variable, rendered in the settings
  * tab. Keep in sync with `buildVars`.
  */
@@ -30,7 +56,11 @@ export const VARIABLE_DOCS: ReadonlyArray<{ name: string; desc: string }> = [
 	{ name: "author", desc: "First author" },
 	{ name: "authors", desc: "All authors, comma-separated" },
 	{ name: "authorsYamlLinks", desc: "Authors as a YAML list of [[wikilinks]] (own line)" },
-	{ name: "description", desc: "Publisher's description (body only — too long for frontmatter)" },
+	{ name: "description", desc: "Publisher's description (body only, too long for frontmatter)" },
+	{
+		name: "descriptionCallout",
+		desc: "Description as a collapsed callout block; no callout (empty variable) when the book has no description",
+	},
 	{ name: "publisher", desc: "Publisher name" },
 	{ name: "publishedDate", desc: "Raw publish date, e.g. 2021-05-04" },
 	{ name: "year", desc: "4-digit publish year" },
@@ -53,6 +83,22 @@ export function escapeYamlDouble(s: string): string {
 }
 
 /**
+ * Format the description as a collapsed Obsidian callout (`> [!summary]-`).
+ * Every line gets the `> ` prefix so multi-paragraph descriptions stay inside
+ * the callout; blank lines become a bare `>`. Empty description renders as an
+ * empty string, so the template line simply collapses to a blank line instead
+ * of leaving a callout with no content.
+ */
+export function descriptionCallout(description: string): string {
+	const text = description.trim();
+	if (text === "") return "";
+	const body = text
+		.split(/\r?\n/)
+		.map((line) => (line.trim() === "" ? ">" : `> ${line}`));
+	return ["> [!summary]- Description", ...body].join("\n");
+}
+
+/**
  * Build the variable map for a book. `coverRef` is whatever should appear for
  * `{{cover}}` — a remote URL or a vault-relative path, decided by the caller.
  */
@@ -65,6 +111,7 @@ export function buildVars(book: BookResult, coverRef: string): TemplateVars {
 		/** YAML list of `[[Author]]` wikilinks — see the file header. */
 		authorsYamlLinks: book.authors.map((a) => `[[${a}]]`),
 		description: book.description ?? "",
+		descriptionCallout: descriptionCallout(book.description ?? ""),
 		publisher: book.publisher ?? "",
 		publishedDate: book.publishedDate ?? "",
 		year: yearOf(book) ?? "",

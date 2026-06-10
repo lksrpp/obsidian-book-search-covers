@@ -4,9 +4,9 @@
 // can name the downloaded cover after the FINAL note basename (including any
 // de-duplication suffix) before writing the note.
 
-import { App, normalizePath, TFile } from "obsidian";
+import { App, normalizePath, Notice, TFile } from "obsidian";
 import type { BookResult } from "./model";
-import { buildVars, renderNote, renderTemplate } from "./template";
+import { buildVars, DEFAULT_TEMPLATE, renderNote, renderTemplate } from "./template";
 // Pure tokenizer borrowed from the (parked) Apple heuristic: lowercases, strips
 // punctuation/brackets/diacritics — which is also exactly what author
 // comparison across frontmatter shapes ("[[Name]]", "Soares, Nate") needs.
@@ -62,8 +62,61 @@ export async function createBookNote(
 	coverRef: string,
 	path: string,
 ): Promise<TFile> {
-	const content = renderNote(settings.noteTemplate, buildVars(book, coverRef));
+	const template = await loadNoteTemplate(app, settings);
+	const content = renderNote(template, buildVars(book, coverRef));
 	return app.vault.create(path, content);
+}
+
+/**
+ * The note template to render: the configured template file's content when one
+ * is set, otherwise the inline template from the settings (itself defaulting
+ * to the built-in template when blanked). A configured-but-missing file falls
+ * back to the inline template WITH a notice (rather than failing the whole
+ * creation flow — by this point the user has already searched and picked an
+ * edition).
+ */
+export async function loadNoteTemplate(
+	app: App,
+	settings: BookSearchCoverSettings,
+): Promise<string> {
+	const raw = settings.templateFile.trim();
+	if (raw !== "") {
+		const file = resolveTemplateFile(app, raw);
+		if (file) return app.vault.cachedRead(file);
+		new Notice(
+			`Template file "${raw}" not found; using the template from the settings.`,
+			8000,
+		);
+	}
+	return settings.noteTemplate.trim() === "" ? DEFAULT_TEMPLATE : settings.noteTemplate;
+}
+
+/** Find the configured template file, tolerating a missing `.md` extension. */
+function resolveTemplateFile(app: App, raw: string): TFile | null {
+	for (const candidate of [raw, `${raw}.md`]) {
+		const f = app.vault.getAbstractFileByPath(normalizePath(candidate));
+		if (f instanceof TFile) return f;
+	}
+	return null;
+}
+
+/**
+ * Create `path` (a `.md` template file) pre-filled with `content`, for the
+ * settings tab's "create template file" button. Returns the file's normalized
+ * path. If a file already exists there, it is selected as-is — never
+ * overwritten.
+ */
+export async function createTemplateFile(
+	app: App,
+	path: string,
+	content: string,
+): Promise<string> {
+	const normalized = normalizePath(path.endsWith(".md") ? path : `${path}.md`);
+	if (app.vault.getAbstractFileByPath(normalized)) return normalized;
+	const slash = normalized.lastIndexOf("/");
+	if (slash > 0) await ensureFolder(app, normalized.slice(0, slash));
+	await app.vault.create(normalized, content);
+	return normalized;
 }
 
 /**

@@ -51,17 +51,17 @@ export async function searchGoogleBooks(
 		res = await requestUrl({ url: url.toString(), throw: false });
 	} catch {
 		throw new GoogleBooksError(
-			"Could not reach Google Books — check your internet connection.",
+			"Could not reach Google Books. Check your internet connection.",
 		);
 	}
 	if (res.status === 400 || res.status === 401 || res.status === 403) {
 		throw new GoogleBooksError(
-			`Google Books rejected the API key (status ${res.status}) — check it in the plugin settings.`,
+			`Google Books rejected the API key (status ${res.status}). Check it in the plugin settings.`,
 		);
 	}
 	if (res.status === 429) {
 		throw new GoogleBooksError(
-			"Google Books daily quota reached (free tier: 1,000 searches) — try again tomorrow.",
+			"Google Books daily quota reached (free tier: 1,000 searches). Try again tomorrow.",
 		);
 	}
 	if (res.status !== 200) {

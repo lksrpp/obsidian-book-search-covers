@@ -1,5 +1,5 @@
 {
-	"name": "book-search-cover",
+	"name": "book-search-covers",
 	"version": "0.1.0",
 	"description": "Search books and create notes from a template, with high-resolution covers.",
 	"main": "main.js",

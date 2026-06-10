@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { matchesBook, sanitizeFileName } from "../src/note";
+import { App, TFile } from "obsidian";
+import {
+	createTemplateFile,
+	loadNoteTemplate,
+	matchesBook,
+	sanitizeFileName,
+} from "../src/note";
 import type { BookResult } from "../src/model";
+import type { BookSearchCoverSettings } from "../src/settings";
+import { DEFAULT_TEMPLATE } from "../src/template";
 
 const BOOK: BookResult = {
 	title: "If Anyone Builds It, Everyone Dies",
@@ -48,6 +56,77 @@ describe("matchesBook — title + author signal", () => {
 		expect(matchesBook(BOOK, { title: "Something Else", author: "[[Nate Soares]]" })).toBe(
 			false,
 		);
+	});
+});
+
+/** In-memory vault: path → markdown content. Returns the fake App + its files. */
+function fakeVault(initial: Record<string, string>) {
+	const files = new Map<string, TFile & { content: string }>();
+	const put = (path: string, content: string) =>
+		files.set(path, Object.assign(new TFile(), { content }));
+	for (const [path, content] of Object.entries(initial)) put(path, content);
+	const app = {
+		vault: {
+			getAbstractFileByPath: (p: string) => files.get(p) ?? null,
+			cachedRead: async (f: TFile & { content: string }) => f.content,
+			create: async (p: string, c: string) => put(p, c),
+			getFolderByPath: () => null,
+			createFolder: async () => {},
+		},
+	} as unknown as App;
+	return { app, files };
+}
+
+function settingsWith(
+	templateFile: string,
+	noteTemplate = "inline {{title}}",
+): BookSearchCoverSettings {
+	return { templateFile, noteTemplate } as BookSearchCoverSettings;
+}
+
+describe("loadNoteTemplate", () => {
+	it("uses the inline template when no template file is configured", async () => {
+		const { app } = fakeVault({});
+		expect(await loadNoteTemplate(app, settingsWith(""))).toBe("inline {{title}}");
+		expect(await loadNoteTemplate(app, settingsWith("  "))).toBe("inline {{title}}");
+	});
+
+	it("uses the built-in default when the inline template is blanked", async () => {
+		const { app } = fakeVault({});
+		expect(await loadNoteTemplate(app, settingsWith("", "  "))).toBe(DEFAULT_TEMPLATE);
+	});
+
+	it("a template file overrides the inline template", async () => {
+		const { app } = fakeVault({ "Templates/Book.md": "# {{title}}" });
+		expect(await loadNoteTemplate(app, settingsWith("Templates/Book.md"))).toBe("# {{title}}");
+	});
+
+	it("tolerates a missing .md extension", async () => {
+		const { app } = fakeVault({ "Templates/Book.md": "# {{title}}" });
+		expect(await loadNoteTemplate(app, settingsWith("Templates/Book"))).toBe("# {{title}}");
+	});
+
+	it("falls back to the inline template when the configured file is missing", async () => {
+		const { app } = fakeVault({});
+		expect(await loadNoteTemplate(app, settingsWith("Templates/Gone.md"))).toBe(
+			"inline {{title}}",
+		);
+	});
+});
+
+describe("createTemplateFile", () => {
+	it("creates the file with the given content, appending .md if needed", async () => {
+		const { app, files } = fakeVault({});
+		const path = await createTemplateFile(app, "Templates/Book template", "my template");
+		expect(path).toBe("Templates/Book template.md");
+		expect(files.get(path)?.content).toBe("my template");
+	});
+
+	it("never overwrites an existing file", async () => {
+		const { app, files } = fakeVault({ "Templates/Book template.md": "mine" });
+		const path = await createTemplateFile(app, "Templates/Book template.md", "new content");
+		expect(path).toBe("Templates/Book template.md");
+		expect(files.get(path)?.content).toBe("mine");
 	});
 });
 

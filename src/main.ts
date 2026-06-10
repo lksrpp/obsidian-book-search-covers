@@ -125,7 +125,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 			new Notice(`Created “${file.basename}”.`);
 			if (!coverRef) {
 				new Notice(
-					"No cover from the search provider — use “Fetch or replace cover” to pick one.",
+					"No cover from the search provider. Use “Fetch or replace cover” to pick one.",
 				);
 			}
 			if (existing) {

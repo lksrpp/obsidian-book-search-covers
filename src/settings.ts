@@ -1,6 +1,8 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type BookSearchCoverPlugin from "./main";
-import { VARIABLE_DOCS } from "./template";
+import { createTemplateFile } from "./note";
+import { DEFAULT_TEMPLATE, VARIABLE_DOCS } from "./template";
+import { FileSuggest } from "./ui/file-suggest";
 import { FolderSuggest } from "./ui/folder-suggest";
 
 export type CoverMode = "link" | "download";
@@ -58,32 +60,23 @@ export interface BookSearchCoverSettings {
 	coverProperty: string;
 	/** `{{var}}` template for the note basename. */
 	fileNameTemplate: string;
-	/** `{{var}}` template for the whole note (frontmatter + body). */
+	/**
+	 * Inline `{{var}}` template for the whole note (frontmatter + body), edited
+	 * right in the settings tab. Used whenever no template file is set.
+	 */
 	noteTemplate: string;
+	/**
+	 * Vault path of a note to use as the template instead (power users —
+	 * editable like any note, Templater-style). Overrides `noteTemplate` when
+	 * set; empty = use the inline template.
+	 */
+	templateFile: string;
 }
 
 export const DEFAULT_FILENAME_TEMPLATE = "{{title}}";
 
-export const DEFAULT_TEMPLATE = `---
-title: "{{title}}"
-author:
-{{authorsYamlLinks}}
-publisher: "{{publisher}}"
-published: {{year}}
-pages: {{pageCount}}
-isbn: "{{isbn}}"
-categories:
-{{categoriesYamlList}}
-cover: "{{cover}}"
-tags: [book]
----
-
-![cover]({{cover}})
-
-# {{title}}
-
-{{description}}
-`;
+/** Suggested template file path for the "create template file" button. */
+export const SUGGESTED_TEMPLATE_PATH = "Templates/Book template.md";
 
 export const DEFAULT_SETTINGS: BookSearchCoverSettings = {
 	googleApiKey: "",
@@ -95,6 +88,7 @@ export const DEFAULT_SETTINGS: BookSearchCoverSettings = {
 	coverProperty: "cover",
 	fileNameTemplate: DEFAULT_FILENAME_TEMPLATE,
 	noteTemplate: DEFAULT_TEMPLATE,
+	templateFile: "",
 };
 
 export class BookSearchCoverSettingTab extends PluginSettingTab {
@@ -110,26 +104,6 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		containerEl.empty();
 		const s = this.plugin.settings;
 
-		// Brief orientation so commands don't have to be self-discovered.
-		new Setting(containerEl).setName("How to use this plugin").setHeading();
-		// An info-only Setting row, so the text gets the exact same spacing as
-		// every other settings row instead of a hand-styled div.
-		const intro = new Setting(containerEl).setClass("bsc-settings-intro").infoEl;
-		intro.createEl("p", {
-			text: "This plugin searches Google Books (or Open Library, when no API key is set) and creates a book note from your template, including a high-resolution cover. Two commands:",
-		});
-		const list = intro.createEl("ul");
-		const newNote = list.createEl("li");
-		newNote.createEl("strong", { text: "New book note" });
-		newNote.appendText(
-			" (also on the ribbon) — type to search, pick an edition, and the note is created from your template in the note folder. The store and cover storage below are only defaults — both can be changed in the modal per search.",
-		);
-		const fetchCover = list.createEl("li");
-		fetchCover.createEl("strong", { text: "Fetch or replace cover for current note" });
-		fetchCover.appendText(
-			" — pick a cover for the open note from Google and Apple candidates, compared side by side. It finds candidates via the note's frontmatter: title (file name if missing) and author/authors (plain text or [[wikilinks]], string or list). Good author info gives better candidates. The chosen cover is written into the cover property configured below.",
-		);
-
 		new Setting(containerEl).setName("Search").setHeading();
 
 		new Setting(containerEl)
@@ -141,7 +115,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					);
 					frag.createEl("a", {
 						text: "Step-by-step guide",
-						href: "https://github.com/lksrpp/obsidian-book-search-cover/blob/main/docs/google-books-api-key.md",
+						href: "https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md",
 					});
 				}),
 			)
@@ -191,13 +165,14 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Cover folder")
 			.setDesc(
-				"Where downloaded covers are stored — also when downloading is only chosen per search.",
+				"Where downloaded covers are stored, also when downloading is only chosen per search.",
 			)
 			.addText((t) => {
 				t.setValue(s.coverFolder).onChange(async (v) => {
 					s.coverFolder = v.trim() || "covers";
 					await this.plugin.saveSettings();
 				});
+				t.inputEl.addClass("bsc-path-input");
 				new FolderSuggest(this.app, t.inputEl);
 			});
 
@@ -233,6 +208,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					s.noteFolder = v.trim();
 					await this.plugin.saveSettings();
 				});
+				t.inputEl.addClass("bsc-path-input");
 				new FolderSuggest(this.app, t.inputEl);
 			});
 
@@ -260,16 +236,24 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					}),
 			);
 
+		// The inline textarea is the simple path; a template file (below)
+		// overrides it for power users. The textarea disables while a file is
+		// set so the precedence is visible, not just documented.
 		let templateInput: HTMLTextAreaElement | undefined;
+		const syncTemplateEditor = () => {
+			if (templateInput) templateInput.disabled = s.templateFile !== "";
+		};
 		new Setting(containerEl)
 			.setName("Note template")
-			.setDesc("Whole note (frontmatter + body). Uses {{var}} placeholders.")
+			.setDesc(
+				"Whole note (frontmatter + body), {{var}} placeholders. Ignored while a template file is set below.",
+			)
 			.addExtraButton((b) =>
 				b
 					.setIcon("rotate-ccw")
-					.setTooltip("Reset to the current default template")
+					.setTooltip("Reset to the default template")
 					.onClick(() => {
-						if (!templateInput) return;
+						if (!templateInput || templateInput.disabled) return;
 						templateInput.value = DEFAULT_TEMPLATE;
 						templateInput.trigger("input");
 					}),
@@ -284,6 +268,48 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 				t.inputEl.addClass("bsc-template-input");
 			});
 
+		let templateFileInput: HTMLInputElement | undefined;
+		new Setting(containerEl)
+			.setName("Template file")
+			.setDesc(
+				"Power users: use a note in your vault as the template instead, editable like any note, with the same {{variables}}. Overrides the inline template above; leave empty to use it.",
+			)
+			.addText((t) => {
+				templateFileInput = t.inputEl;
+				t.setPlaceholder(SUGGESTED_TEMPLATE_PATH)
+					.setValue(s.templateFile)
+					.onChange(async (v) => {
+						s.templateFile = v.trim();
+						syncTemplateEditor();
+						await this.plugin.saveSettings();
+					});
+				t.inputEl.addClass("bsc-path-input");
+				new FileSuggest(this.app, t.inputEl);
+			})
+			.addExtraButton((b) =>
+				b
+					.setIcon("file-plus")
+					.setTooltip(
+						"Create a template file from the inline template above (at the entered path, or the suggested one) and use it",
+					)
+					.onClick(async () => {
+						if (!templateFileInput) return;
+						const target = templateFileInput.value.trim() || SUGGESTED_TEMPLATE_PATH;
+						const content = s.noteTemplate.trim() === "" ? DEFAULT_TEMPLATE : s.noteTemplate;
+						try {
+							const path = await createTemplateFile(this.app, target, content);
+							templateFileInput.value = path;
+							templateFileInput.trigger("input");
+							new Notice(`Using template file “${path}”.`);
+						} catch (e) {
+							new Notice(
+								e instanceof Error ? e.message : "Could not create the template file.",
+							);
+						}
+					}),
+			);
+		syncTemplateEditor();
+
 		const varsDetails = containerEl.createEl("details", { cls: "bsc-variables" });
 		varsDetails.createEl("summary", { text: "Available template variables" });
 		const varsList = varsDetails.createDiv({ cls: "bsc-variables-grid" });
@@ -291,5 +317,24 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 			varsList.createEl("code", { text: `{{${v.name}}}` });
 			varsList.createDiv({ cls: "bsc-variables-desc", text: v.desc });
 		}
+
+		// Orientation for the commands, parked at the very bottom so the tab
+		// opens straight on the actual settings. Collapsed by default.
+		const intro = containerEl.createEl("details", { cls: "bsc-settings-intro" });
+		intro.createEl("summary", { text: "How to use this plugin" });
+		intro.createEl("p", {
+			text: "This plugin searches Google Books (or Open Library, when no API key is set) and creates a book note from your template, including a high-resolution cover. Two commands:",
+		});
+		const list = intro.createEl("ul");
+		const newNote = list.createEl("li");
+		newNote.createEl("strong", { text: "New book note" });
+		newNote.appendText(
+			" (also on the ribbon): type to search, pick an edition, and the note is created from your template in the note folder. The store and cover storage above are only defaults; both can be changed in the modal per search.",
+		);
+		const fetchCover = list.createEl("li");
+		fetchCover.createEl("strong", { text: "Fetch or replace cover for current note" });
+		fetchCover.appendText(
+			": pick a cover for the open note from Google and Apple candidates, compared side by side. It finds candidates via the note's frontmatter: title (file name if missing) and author/authors (plain text or [[wikilinks]], string or list). Good author info gives better candidates. The chosen cover is written into the cover property configured above.",
+		);
 	}
 }

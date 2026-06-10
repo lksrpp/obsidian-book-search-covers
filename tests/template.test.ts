@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildVars,
+	descriptionCallout,
 	escapeYamlDouble,
 	renderNote,
 	renderTemplate,
@@ -23,6 +24,34 @@ const BOOK: BookResult = {
 describe("escapeYamlDouble", () => {
 	it("escapes backslashes, quotes and folds newlines", () => {
 		expect(escapeYamlDouble('a "b" c\\d\ne')).toBe('a \\"b\\" c\\\\d e');
+	});
+});
+
+describe("descriptionCallout", () => {
+	it("wraps a single-line description in a collapsed callout", () => {
+		expect(descriptionCallout("A short blurb.")).toBe(
+			"> [!summary]- Description\n> A short blurb.",
+		);
+	});
+
+	it("prefixes every line and keeps paragraph breaks inside the callout", () => {
+		expect(descriptionCallout("First paragraph.\n\nSecond paragraph.")).toBe(
+			"> [!summary]- Description\n> First paragraph.\n>\n> Second paragraph.",
+		);
+	});
+
+	it("renders empty for a missing description", () => {
+		expect(descriptionCallout("")).toBe("");
+		expect(descriptionCallout("  \n ")).toBe("");
+		expect(renderTemplate("{{descriptionCallout}}", buildVars(BOOK, ""))).toBe("");
+	});
+
+	it("is exposed as a template variable", () => {
+		const out = renderTemplate(
+			"{{descriptionCallout}}",
+			buildVars({ ...BOOK, description: "Blurb." }, ""),
+		);
+		expect(out).toBe("> [!summary]- Description\n> Blurb.");
 	});
 });
 

@@ -4,7 +4,7 @@
 // cover-storage mode from settings are only defaults — both can be overridden
 // here for this search.
 
-import { App, debounce, DropdownComponent, Modal } from "obsidian";
+import { App, debounce, DropdownComponent, Modal, setIcon, setTooltip } from "obsidian";
 import { type BookResult, yearOf } from "../model";
 import { searchBooks } from "../search";
 import { type BookSearchCoverSettings, type CoverMode, STORES } from "../settings";
@@ -25,7 +25,6 @@ export class BookSearchModal extends Modal {
 	private selected = -1;
 	private generation = 0;
 	private inputEl!: HTMLInputElement;
-	private statusEl!: HTMLElement;
 	private resultsEl!: HTMLElement;
 
 	constructor(
@@ -39,7 +38,7 @@ export class BookSearchModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.modalEl.addClass("bsc-modal");
+		this.modalEl.addClass("bsc-modal", "bsc-search-modal");
 		this.titleEl.setText("Search for a book");
 
 		this.inputEl = this.contentEl.createEl("input", {
@@ -48,7 +47,13 @@ export class BookSearchModal extends Modal {
 			attr: { placeholder: "Title, author, ISBN…" },
 		});
 
-		addOptionsRow(this.contentEl, {
+		this.resultsEl = this.contentEl.createDiv({ cls: "bsc-results" });
+		this.renderMessage("search", "Type to search by title, author or ISBN.");
+
+		// Options and key hints live in a footer bar, so the eye goes straight
+		// from the input to the results.
+		const footer = this.contentEl.createDiv({ cls: "bsc-modal-footer" });
+		addOptionsRow(footer, {
 			country: this.country,
 			coverMode: this.coverMode,
 			onCountry: (code) => {
@@ -59,10 +64,16 @@ export class BookSearchModal extends Modal {
 				this.coverMode = mode;
 			},
 		});
-
-		this.statusEl = this.contentEl.createDiv({ cls: "bsc-status" });
-		this.statusEl.setText(`Type at least ${MIN_QUERY_LEN} characters to search.`);
-		this.resultsEl = this.contentEl.createDiv({ cls: "bsc-results" });
+		const hints = footer.createDiv({ cls: "bsc-key-hints" });
+		for (const [key, label] of [
+			["↑↓", "navigate"],
+			["↵", "create note"],
+			["esc", "close"],
+		] as const) {
+			const hint = hints.createSpan({ cls: "bsc-key-hint" });
+			hint.createEl("kbd", { text: key });
+			hint.appendText(` ${label}`);
+		}
 
 		const debounced = debounce(() => void this.runSearch(), DEBOUNCE_MS, true);
 		this.inputEl.addEventListener("input", () => {
@@ -92,18 +103,46 @@ export class BookSearchModal extends Modal {
 		const query = this.inputEl.value.trim();
 		if (query.length < MIN_QUERY_LEN) return;
 		const gen = ++this.generation;
-		this.statusEl.setText("Searching…");
+		this.renderSkeleton();
 		try {
 			const results = await searchBooks(query, this.settings, this.country);
 			if (gen !== this.generation) return; // a newer search superseded this one
 			this.results = results;
-			this.statusEl.setText(results.length === 0 ? "No books found." : "");
-			this.renderResults();
+			if (results.length === 0) {
+				this.renderMessage("book-x", "No books found. Try another store or fewer words.");
+			} else {
+				this.renderResults();
+			}
 		} catch (e) {
 			if (gen !== this.generation) return;
 			this.results = [];
-			this.resultsEl.empty();
-			this.statusEl.setText(e instanceof Error ? e.message : "Search failed.");
+			this.renderMessage(
+				"alert-triangle",
+				e instanceof Error ? e.message : "Search failed.",
+			);
+		}
+	}
+
+	/** Centered icon + text, used for the idle, no-results and error states. */
+	private renderMessage(icon: string, text: string): void {
+		this.resultsEl.empty();
+		this.selected = -1;
+		const box = this.resultsEl.createDiv({ cls: "bsc-empty" });
+		setIcon(box.createDiv({ cls: "bsc-empty-icon" }), icon);
+		box.createDiv({ text });
+	}
+
+	/** Shimmering placeholder rows while a search is in flight. */
+	private renderSkeleton(): void {
+		this.resultsEl.empty();
+		this.selected = -1;
+		for (let i = 0; i < 4; i++) {
+			const row = this.resultsEl.createDiv({ cls: "bsc-result-row bsc-skeleton-row" });
+			row.createDiv({ cls: "bsc-result-cover bsc-skeleton-block" });
+			const text = row.createDiv({ cls: "bsc-result-text" });
+			text.createDiv({ cls: "bsc-skeleton-line bsc-skeleton-block" });
+			text.createDiv({ cls: "bsc-skeleton-line bsc-skeleton-block" });
+			text.createDiv({ cls: "bsc-skeleton-line bsc-skeleton-block" });
 		}
 	}
 
@@ -112,24 +151,32 @@ export class BookSearchModal extends Modal {
 		this.selected = -1;
 		this.results.forEach((book, i) => {
 			const row = this.resultsEl.createEl("button", { cls: "bsc-result-row" });
+			// Always render the same fixed-size slot, image or not, so every
+			// row's text starts at the same x position.
+			const cover = row.createDiv({ cls: "bsc-result-cover" });
 			if (book.providerCoverUrl) {
-				const img = row.createEl("img", { cls: "bsc-result-cover" });
+				const img = cover.createEl("img");
+				img.addEventListener("load", () => img.addClass("is-loaded"));
 				img.src = book.providerCoverUrl;
 				img.loading = "lazy";
+				if (img.complete) img.addClass("is-loaded");
 			} else {
-				row.createDiv({ cls: "bsc-result-cover bsc-result-cover-empty" });
+				cover.addClass("bsc-result-cover-empty");
+				setIcon(cover, "book");
 			}
 			const text = row.createDiv({ cls: "bsc-result-text" });
 			text.createDiv({ cls: "bsc-result-title", text: book.title });
+			if (book.authors.length > 0) {
+				text.createDiv({ cls: "bsc-result-authors", text: book.authors.join(", ") });
+			}
 			const meta = [
-				book.authors.join(", "),
 				yearOf(book),
 				book.pageCount != null ? `${book.pageCount} pages` : undefined,
 				book.publisher,
 			]
 				.filter((x) => x)
 				.join(" · ");
-			text.createEl("small", { cls: "bsc-result-meta", text: meta });
+			if (meta) text.createEl("small", { cls: "bsc-result-meta", text: meta });
 			if (book.description) {
 				text.createDiv({ cls: "bsc-result-desc", text: book.description });
 			}
@@ -180,8 +227,13 @@ export function addOptionsRow(
 ): void {
 	const row = parent.createDiv({ cls: "bsc-options-row" });
 
+	// Icon + short label keep the controls compact; the tooltip carries the
+	// part users cannot guess: what the dropdown affects, and that it only
+	// applies to this search.
 	const storeOpt = row.createDiv({ cls: "bsc-option" });
-	storeOpt.createEl("label", { text: "Store" });
+	setIcon(storeOpt.createSpan({ cls: "bsc-option-icon" }), "globe");
+	storeOpt.createEl("label", { cls: "bsc-option-label", text: "Store" });
+	setTooltip(storeOpt, "Store region for search results and covers. This search only.");
 	const dropdown = new DropdownComponent(storeOpt);
 	for (const store of STORES) dropdown.addOption(store.code, `${store.label} (${store.code})`);
 	if (!STORES.some((s) => s.code === opts.country)) {
@@ -190,7 +242,12 @@ export function addOptionsRow(
 	dropdown.setValue(opts.country).onChange(opts.onCountry);
 
 	const coverOpt = row.createDiv({ cls: "bsc-option" });
-	coverOpt.createEl("label", { text: "Cover" });
+	setIcon(coverOpt.createSpan({ cls: "bsc-option-icon" }), "image");
+	coverOpt.createEl("label", { cls: "bsc-option-label", text: "Cover" });
+	setTooltip(
+		coverOpt,
+		"Keep the cover as a remote link, or download it into the vault. This search only.",
+	);
 	new DropdownComponent(coverOpt)
 		.addOption("link", "Link URL")
 		.addOption("download", "Download")

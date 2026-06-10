@@ -2,6 +2,13 @@
 .bsc-modal {
 	width: var(--dialog-max-width);
 }
+/* The result list reads best as a column; the full dialog width only adds
+   empty space to the right of the text. Sized like Obsidian's own search
+   prompts (quick switcher); the cover picker keeps the wide layout for its
+   grid. */
+.bsc-search-modal {
+	width: min(var(--prompt-width), var(--dialog-max-width));
+}
 .bsc-query-input {
 	width: 100%;
 	font-size: 16px; /* prevents iOS focus-zoom */
@@ -10,21 +17,49 @@
 }
 .bsc-options-row {
 	display: flex;
-	gap: 1.5em;
+	gap: 1em;
 	align-items: center;
 	flex-wrap: wrap;
-	padding: 0.25em 0 0.5em;
-	border-bottom: 1px solid var(--background-modifier-border);
-	margin-bottom: 0.5em;
 }
 .bsc-option {
 	display: flex;
-	gap: 0.5em;
+	gap: 0.35em;
 	align-items: center;
 }
-.bsc-option label {
+.bsc-option-icon {
+	display: flex;
+	color: var(--text-muted);
+}
+.bsc-option-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+.bsc-option-label {
 	color: var(--text-muted);
 	font-size: var(--font-smaller);
+}
+/* Footer bar: per-search options on the left, key hints on the right. */
+.bsc-modal-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1em;
+	flex-wrap: wrap;
+	margin-top: 0.5em;
+	padding-top: 0.5em;
+	border-top: 1px solid var(--background-modifier-border);
+}
+.bsc-key-hints {
+	display: flex;
+	gap: 1em;
+	color: var(--text-faint);
+	font-size: var(--font-smallest);
+}
+.bsc-key-hint kbd {
+	font-family: inherit;
+	background-color: var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 0.1em 0.4em;
 }
 .bsc-status {
 	color: var(--text-muted);
@@ -38,6 +73,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.25em;
+	min-height: 14em; /* idle/empty/skeleton/results all keep the same height */
 	max-height: 50vh;
 	overflow-y: auto;
 }
@@ -45,38 +81,70 @@
 	display: flex;
 	gap: 0.75em;
 	align-items: flex-start;
+	/* Buttons center their content by default — pin everything to the left so
+	   covers and text line up across rows regardless of content width. */
+	justify-content: flex-start;
 	text-align: left;
+	width: 100%;
 	height: auto;
 	padding: 0.5em;
 	cursor: pointer;
 	box-shadow: none;
 	background: transparent;
+	transition: background-color 100ms ease;
 }
-.bsc-result-row:hover,
-.bsc-result-row.is-selected {
+.bsc-result-row:hover {
 	background-color: var(--background-modifier-hover);
 }
+.bsc-result-row.is-selected {
+	background-color: hsla(var(--interactive-accent-hsl), 0.15);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+/* Fixed-size slot rendered for every row (image or placeholder icon), so the
+   text column always starts at the same x. */
 .bsc-result-cover {
-	width: 48px;
-	height: 72px;
-	object-fit: cover;
-	border-radius: 3px;
-	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 56px;
+	width: 56px;
+	height: 84px;
+	border-radius: 4px;
 	background-color: var(--background-modifier-border);
+	box-shadow: var(--shadow-s);
+	overflow: hidden;
+}
+.bsc-result-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	opacity: 0;
+	transition: opacity 200ms ease;
+}
+.bsc-result-cover img.is-loaded {
+	opacity: 1;
 }
 .bsc-result-cover-empty {
-	opacity: 0.4;
+	color: var(--text-faint);
+	box-shadow: none;
 }
 .bsc-result-text {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	/* The row is a <button>; Obsidian buttons set white-space: nowrap, which
+	   would defeat the multi-line description clamp. */
+	white-space: normal;
 }
 .bsc-result-title {
 	font-weight: var(--font-semibold);
 }
-.bsc-result-meta {
+.bsc-result-authors {
 	color: var(--text-muted);
+}
+.bsc-result-meta {
+	color: var(--text-faint);
+	font-size: var(--font-smallest);
 }
 .bsc-result-desc {
 	color: var(--text-muted);
@@ -85,8 +153,63 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	display: -webkit-box;
-	-webkit-line-clamp: 2;
+	/* 3 lines fill the height of the 84px cover slot instead of leaving a gap. */
+	-webkit-line-clamp: 3;
 	-webkit-box-orient: vertical;
+}
+
+/* Idle / no-results / error state, centered in the results area. */
+.bsc-empty {
+	margin: auto;
+	text-align: center;
+	color: var(--text-muted);
+	padding: 1em;
+}
+.bsc-empty-icon {
+	color: var(--text-faint);
+	margin-bottom: 0.5em;
+}
+.bsc-empty-icon svg {
+	width: var(--icon-xl);
+	height: var(--icon-xl);
+}
+
+/* Skeleton rows shown while a search is in flight. */
+.bsc-skeleton-row {
+	cursor: default;
+}
+.bsc-skeleton-block {
+	background: linear-gradient(
+		90deg,
+		var(--background-modifier-hover) 25%,
+		var(--background-modifier-border) 50%,
+		var(--background-modifier-hover) 75%
+	);
+	background-size: 200% 100%;
+	animation: bsc-shimmer 1.2s linear infinite;
+	box-shadow: none;
+}
+.bsc-skeleton-line {
+	height: 0.9em;
+	border-radius: var(--radius-s);
+	margin-bottom: 0.5em;
+}
+.bsc-skeleton-line:nth-child(1) {
+	width: 45%;
+}
+.bsc-skeleton-line:nth-child(2) {
+	width: 70%;
+}
+.bsc-skeleton-line:nth-child(3) {
+	width: 55%;
+}
+@keyframes bsc-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
 }
 
 /* ── Cover picker grid ─────────────────────────────────────────────────── */
@@ -138,15 +261,17 @@
 
 /* ── Settings ──────────────────────────────────────────────────────────── */
 .bsc-settings-intro {
-	border-top: none;
-}
-.bsc-settings-intro .setting-item-info {
+	margin-top: 0.75em;
 	color: var(--text-muted);
 	font-size: var(--font-smaller);
-	margin-right: 0;
+}
+.bsc-settings-intro summary {
+	cursor: pointer;
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
 }
 .bsc-settings-intro p {
-	margin: 0 0 0.5em;
+	margin: 0.5em 0;
 }
 .bsc-settings-intro ul {
 	/* Flush with the heading and the paragraph — no browser list indent. */
@@ -163,6 +288,14 @@
 .bsc-template-input {
 	width: 100%;
 	font-family: var(--font-monospace);
+}
+/* Vault-path inputs hold long values; the stock input width truncates them. */
+.bsc-path-input {
+	width: 24em;
+	max-width: 100%;
+}
+.bsc-template-input:disabled {
+	opacity: 0.5;
 }
 .bsc-variables {
 	margin-top: 0.75em;

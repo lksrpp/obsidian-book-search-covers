@@ -29,8 +29,8 @@ for backfilling notes made with another plugin.
    enable the *Books API* → create an API key. No billing required (1,000
    requests/day).
 2. Paste it into the plugin settings.
-3. Set your country code (default `DE`), cover storage mode, and your note
-   template.
+3. Set your country code (default `DE`), cover storage mode, and — optionally —
+   a template file.
 
 ## Cover storage
 
@@ -39,16 +39,25 @@ for backfilling notes made with another plugin.
 - **Download to folder**: the hi-res image is saved into your vault and
   referenced locally. Portable and offline; ~140 KB per cover at 800×800.
 
-## Template variables
+## Note template
 
-Use `{{var}}` placeholders in the note template (frontmatter + body):
+The **Note template** in the settings comes pre-filled with a sensible default —
+tweak it right there (or don't, it works as-is). Power users can instead point
+**Template file** at a regular note in the vault (with autocompletion, like
+Templater's templates) — it then overrides the inline template, and the button
+next to the setting creates such a file from your current inline template so
+nothing is lost when switching. If a configured file goes missing, note
+creation falls back to the inline template and tells you.
 
-`title`, `subtitle`, `author`, `authors`, `description`, `publisher`,
+Use `{{var}}` placeholders in the template (frontmatter + body):
+
+`title`, `subtitle`, `author`, `authors`, `description`, `descriptionCallout`
+(the description as a collapsed `> [!summary]-` callout), `publisher`,
 `publishedDate`, `year`, `pageCount`, `isbn`, `isbn13`, `isbn10`, `categories`,
 `language`, `seriesName`, `seriesNumber`, `source`, `cover`.
 
 Reading status, rating, dates, tags, etc. are **not** built in by design — add
-them to your own template.
+them to your own template file.
 
 > **YAML note:** substitution is literal. The default template double-quotes
 > scalar frontmatter values; keep free-form text like `{{description}}` in the

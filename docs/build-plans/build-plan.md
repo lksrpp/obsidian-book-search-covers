@@ -72,7 +72,7 @@ grid, written back via `processFrontMatter`).
 The scaffold compiles, but has not been run inside Obsidian. Verify end-to-end:
 
 - [ ] `npm install && npm run build` clean (done at scaffold time — re-verify).
-- [ ] Symlink/copy into a test vault's `.obsidian/plugins/book-search-cover/`
+- [ ] Symlink/copy into a test vault's `.obsidian/plugins/book-search-covers/`
       (or point BRAT at the repo). `npm run dev` for watch builds.
 - [ ] Add a Google Books API key in settings.
 - [ ] New book note → search a known EN title and a known DE title → confirm the
