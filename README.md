@@ -1,62 +1,71 @@
 # Book Search & Covers
 
 An Obsidian plugin that searches for a book, lets you pick the right edition from
-a rich result list, and creates a note from your own template — with a
+a rich result list, and creates a note from your own template, including a
 **high-resolution cover**.
 
 It uses **Google Books** for metadata (titles, authors, ISBN, page count,
-publisher — English and German), **Apple iTunes Search** for sharp hi-res
-covers, and **Open Library** as a search fallback when Google finds nothing.
+publisher; English and German), **Apple iTunes Search** for sharp hi-res
+covers, and **Open Library** as the keyless search provider and as a fallback
+when Google finds nothing.
 
 > Single-user, self-hosted-minded. Installed privately via [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
 ## How it works
 
 1. Run **New book note** (ribbon icon or command).
-2. Type a query, then pick the matching book from the list (cover, title,
-   author/year, blurb).
-3. The plugin resolves the best cover — Apple first (ranked + filtered to avoid
-   summaries/workbooks), falling back to Google's own image — fills your
-   template, and creates the note.
+2. Type to search. Results appear live, with cover, title, author, year and
+   blurb. The store region and the cover storage mode can be changed right in
+   the modal, for that search only.
+3. Pick an edition. The note is created from your template in the note folder,
+   with the search provider's cover image.
 
-There's also **Fetch or replace cover for current note**, which re-runs cover
-resolution on an existing note using its `title`/`author` frontmatter — handy
-for backfilling notes made with another plugin.
+For a better cover, run **Fetch or replace cover for current note**: it
+collects candidates from Google and Apple and shows them side by side, each
+labeled with title, author, year and source API. It reads the note's
+frontmatter `title` (file name if missing) and `author`/`authors` (plain text
+or `[[wikilinks]]`); the chosen cover is written into the configured cover
+property. Also handy for backfilling notes made with another plugin.
 
 ## Setup
 
-1. Get a free **Google Books API key**: Google Cloud console → create a project →
-   enable the *Books API* → create an API key. No billing required (1,000
-   requests/day).
+1. Optional but recommended: get a free **Google Books API key**. Google Cloud
+   console → create a project → enable the *Books API* → create an API key. No
+   billing required (1,000 requests/day). Without a key, search uses Open
+   Library instead, with leaner metadata.
 2. Paste it into the plugin settings.
-3. Set your country code (default `DE`), cover storage mode, and — optionally —
-   a template file.
+3. Set your default store (default `DE`), cover storage mode, and optionally a
+   template file.
 
 ## Cover storage
 
-- **Link URL** (default): the remote cover URL is written to the note. Lightest;
-  needs internet to render.
-- **Download to folder**: the hi-res image is saved into your vault and
+- **Link URL** (default): the remote cover URL is written to the note.
+  Lightest; needs internet to render.
+- **Download into the vault**: the hi-res image is saved into your vault and
   referenced locally. Portable and offline; ~140 KB per cover at 800×800.
+
+Both modals let you override the mode per search.
 
 ## Note template
 
-The **Note template** in the settings comes pre-filled with a sensible default —
-tweak it right there (or don't, it works as-is). Power users can instead point
+The **Note template** in the settings comes pre-filled with a sensible default.
+Tweak it right there (or don't, it works as-is). Power users can instead point
 **Template file** at a regular note in the vault (with autocompletion, like
-Templater's templates) — it then overrides the inline template, and the button
+Templater's templates). It then overrides the inline template, and the button
 next to the setting creates such a file from your current inline template so
 nothing is lost when switching. If a configured file goes missing, note
 creation falls back to the inline template and tells you.
 
 Use `{{var}}` placeholders in the template (frontmatter + body):
 
-`title`, `subtitle`, `author`, `authors`, `description`, `descriptionCallout`
-(the description as a collapsed `> [!summary]-` callout), `publisher`,
-`publishedDate`, `year`, `pageCount`, `isbn`, `isbn13`, `isbn10`, `categories`,
-`language`, `seriesName`, `seriesNumber`, `source`, `cover`.
+`title`, `subtitle`, `author`, `authors`, `authorsYamlLinks` (YAML list of
+`[[wikilinks]]`), `description`, `descriptionCallout` (the description as a
+collapsed `> [!summary]-` callout; empty when there is no description),
+`publisher`, `publishedDate`, `year`, `pageCount`, `isbn`, `isbn13`, `isbn10`,
+`categories`, `categoriesYamlList`, `language`, `seriesName`, `seriesNumber`,
+`source`, `cover`.
 
-Reading status, rating, dates, tags, etc. are **not** built in by design — add
+Reading status, rating, dates, tags, etc. are **not** built in by design; add
 them to your own template file.
 
 > **YAML note:** substitution is literal. The default template double-quotes
@@ -80,7 +89,8 @@ npm run lint    # eslint-plugin-obsidianmd
 ```
 
 Built with the standard Obsidian + esbuild toolchain. See
-[`docs/build-plan.md`](docs/build-plan.md) for the implementation roadmap.
+[`docs/build-plans/build-plan.md`](docs/build-plans/build-plan.md) for the
+implementation roadmap.
 
 ## License
 
