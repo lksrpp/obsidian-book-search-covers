@@ -88,9 +88,7 @@ npm run build   # typecheck + production build
 npm run lint    # eslint-plugin-obsidianmd
 ```
 
-Built with the standard Obsidian + esbuild toolchain. See
-[`docs/build-plans/build-plan.md`](docs/build-plans/build-plan.md) for the
-implementation roadmap.
+Built with the standard Obsidian + esbuild toolchain.
 
 ## License
 
