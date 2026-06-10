@@ -1,44 +1,84 @@
-/* Query prompt */
+/* ── Shared modal layout (search modal + cover picker) ─────────────────── */
+.bsc-modal {
+	width: var(--dialog-max-width);
+}
 .bsc-query-input {
 	width: 100%;
 	font-size: 16px; /* prevents iOS focus-zoom */
 	padding: 0.5em;
-	margin-bottom: 0.75em;
+	margin-bottom: 0.5em;
 }
-.bsc-query-btn {
-	float: right;
+.bsc-options-row {
+	display: flex;
+	gap: 1.5em;
+	align-items: center;
+	flex-wrap: wrap;
+	padding: 0.25em 0 0.5em;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: 0.5em;
+}
+.bsc-option {
+	display: flex;
+	gap: 0.5em;
+	align-items: center;
+}
+.bsc-option label {
+	color: var(--text-muted);
+	font-size: var(--font-smaller);
+}
+.bsc-status {
+	color: var(--text-muted);
+	font-size: var(--font-smaller);
+	min-height: 1.4em;
+	margin-bottom: 0.25em;
 }
 
-/* Result rows in the pick list */
-.bsc-suggest-row {
+/* ── Search result rows ────────────────────────────────────────────────── */
+.bsc-results {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25em;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+.bsc-result-row {
 	display: flex;
 	gap: 0.75em;
 	align-items: flex-start;
-	padding: 0.25em 0;
+	text-align: left;
+	height: auto;
+	padding: 0.5em;
+	cursor: pointer;
+	box-shadow: none;
+	background: transparent;
 }
-.bsc-suggest-cover {
-	width: 40px;
-	height: 60px;
+.bsc-result-row:hover,
+.bsc-result-row.is-selected {
+	background-color: var(--background-modifier-hover);
+}
+.bsc-result-cover {
+	width: 48px;
+	height: 72px;
 	object-fit: cover;
 	border-radius: 3px;
 	flex-shrink: 0;
 	background-color: var(--background-modifier-border);
 }
-.bsc-suggest-cover-empty {
+.bsc-result-cover-empty {
 	opacity: 0.4;
 }
-.bsc-suggest-text {
+.bsc-result-text {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 }
-.bsc-suggest-title {
+.bsc-result-title {
 	font-weight: var(--font-semibold);
 }
-.bsc-suggest-meta {
+.bsc-result-meta {
 	color: var(--text-muted);
 }
-.bsc-suggest-desc {
+.bsc-result-desc {
 	color: var(--text-muted);
 	font-size: var(--font-smaller);
 	margin-top: 0.15em;
@@ -49,8 +89,96 @@
 	-webkit-box-orient: vertical;
 }
 
-/* Settings template editor */
+/* ── Cover picker grid ─────────────────────────────────────────────────── */
+.bsc-cover-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 0.75em;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+.bsc-cover-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35em;
+	height: auto;
+	padding: 0.6em 0.5em;
+	cursor: pointer;
+}
+.bsc-cover-card:hover {
+	background-color: var(--background-modifier-hover);
+}
+.bsc-cover-card-img {
+	width: 120px;
+	height: 180px;
+	object-fit: contain;
+	border-radius: 3px;
+	background-color: var(--background-modifier-border);
+}
+.bsc-cover-card-badge {
+	font-size: var(--font-smallest);
+	font-weight: var(--font-semibold);
+	padding: 0.05em 0.5em;
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+.bsc-cover-card-label {
+	font-size: var(--font-smaller);
+	color: var(--text-muted);
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	white-space: normal;
+}
+
+/* ── Settings ──────────────────────────────────────────────────────────── */
+.bsc-settings-intro {
+	border-top: none;
+}
+.bsc-settings-intro .setting-item-info {
+	color: var(--text-muted);
+	font-size: var(--font-smaller);
+	margin-right: 0;
+}
+.bsc-settings-intro p {
+	margin: 0 0 0.5em;
+}
+.bsc-settings-intro ul {
+	/* Flush with the heading and the paragraph — no browser list indent. */
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.bsc-settings-intro li {
+	margin-bottom: 0.4em;
+}
+.bsc-settings-intro strong {
+	color: var(--text-normal);
+}
 .bsc-template-input {
 	width: 100%;
 	font-family: var(--font-monospace);
+}
+.bsc-variables {
+	margin-top: 0.75em;
+	font-size: var(--font-smaller);
+}
+.bsc-variables summary {
+	cursor: pointer;
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+}
+.bsc-variables-grid {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 0.25em 1em;
+	padding: 0.5em 0 0 0.5em;
+}
+.bsc-variables-desc {
+	color: var(--text-muted);
 }

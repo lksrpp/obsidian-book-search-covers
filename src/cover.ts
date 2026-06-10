@@ -1,59 +1,112 @@
-// Cover resolution + storage.
+// Cover handling.
 //
-// Resolution chain (per the agreed design):
-//   1. Apple iTunes Search (title+author) → ranking heuristic → hi-res artwork.
-//   2. If Apple finds nothing usable → the search provider's own cover image.
-//   3. Nothing → null (the note is created without a cover).
+// At note-creation time the cover is simply the search provider's own image
+// (for Google, upscaled to `coverSize` via the fife parameter — see
+// `upscaleGoogleCover`). No Apple call happens during creation.
+//
+// When that image is missing or disappointing, the "Fetch or replace cover"
+// command collects candidates from BOTH Google and Apple, clearly labeled, and
+// lets the user pick (see ui/cover-picker.ts). The old Apple auto-pick
+// heuristic (`pickBest` in providers/apple.ts) is parked — kept for tests and
+// possible future ranking of the picker list.
 //
 // Storage honors the `coverMode` setting: keep the remote URL, or download the
 // image into the vault and return its local path for embedding.
 
 import { App, normalizePath, requestUrl } from "obsidian";
-import type { BookResult } from "./model";
-import { appleCoverSearch, type BookForPick, pickBest } from "./providers/apple";
+import { appleCoverSearch } from "./providers/apple";
+import { searchGoogleBooks } from "./providers/google";
 import type { BookSearchCoverSettings } from "./settings";
 
-export interface ResolvedCover {
-	/** Remote https URL of the chosen cover. */
+export interface CoverCandidate {
+	/** Remote https URL of the cover image. */
 	url: string;
-	from: "apple" | "provider";
+	source: "google" | "apple";
+	/** Short human label shown under the image in the picker. */
+	label: string;
 }
 
-function toPick(book: BookResult): BookForPick {
-	return {
-		title: book.title,
-		subtitle: book.subtitle,
-		author: book.authors[0] ?? "",
-		seriesNumber: book.seriesNumber,
-	};
-}
-
-/** Find the best cover URL for a book, or null if no source has one. */
-export async function resolveCoverUrl(
-	book: BookForPick & { providerCoverUrl?: string },
+/**
+ * Collect cover candidates for a book from Google and Apple, in parallel.
+ * Each source failing (no key, offline, …) just contributes nothing — the
+ * picker shows whatever was found.
+ */
+export async function collectCoverCandidates(
+	book: { title: string; author: string },
 	settings: BookSearchCoverSettings,
-): Promise<ResolvedCover | null> {
+): Promise<CoverCandidate[]> {
+	const [google, apple] = await Promise.all([
+		googleCandidates(book, settings),
+		appleCandidates(book, settings),
+	]);
+	return dedupeByUrl([...google, ...apple]);
+}
+
+async function googleCandidates(
+	book: { title: string; author: string },
+	settings: BookSearchCoverSettings,
+): Promise<CoverCandidate[]> {
+	const query = book.author ? `${book.title} ${book.author}` : book.title;
+	try {
+		const results = await searchGoogleBooks(
+			query,
+			settings.googleApiKey,
+			settings.preferredCountry,
+			settings.coverSize,
+		);
+		return results
+			.filter((r) => r.providerCoverUrl)
+			.map((r) => ({
+				url: r.providerCoverUrl as string,
+				source: "google" as const,
+				label: [r.title, yearFrom(r.publishedDate), r.publisher]
+					.filter((x): x is string => !!x)
+					.join(" · "),
+			}));
+	} catch {
+		return [];
+	}
+}
+
+async function appleCandidates(
+	book: { title: string; author: string },
+	settings: BookSearchCoverSettings,
+): Promise<CoverCandidate[]> {
 	const candidates = await appleCoverSearch(
-		book,
+		{ title: book.title, author: book.author },
 		settings.preferredCountry,
 		settings.coverSize,
 	);
-	const picked = pickBest(book, candidates);
-	if (picked.kind === "apple") {
-		return { url: picked.candidate.artworkUrl, from: "apple" };
-	}
-	if (book.providerCoverUrl) {
-		return { url: book.providerCoverUrl, from: "provider" };
-	}
-	return null;
+	return candidates.map((c) => ({
+		url: c.artworkUrl,
+		source: "apple" as const,
+		label: [c.trackName, c.artistName].filter((x) => x).join(" — "),
+	}));
 }
 
-/** Convenience wrapper that takes a full BookResult. */
-export function resolveCoverForBook(
-	book: BookResult,
-	settings: BookSearchCoverSettings,
-): Promise<ResolvedCover | null> {
-	return resolveCoverUrl({ ...toPick(book), providerCoverUrl: book.providerCoverUrl }, settings);
+function yearFrom(date: string | undefined): string | undefined {
+	return date?.match(/\d{4}/)?.[0];
+}
+
+function dedupeByUrl(candidates: CoverCandidate[]): CoverCandidate[] {
+	const seen = new Set<string>();
+	return candidates.filter((c) => {
+		if (seen.has(c.url)) return false;
+		seen.add(c.url);
+		return true;
+	});
+}
+
+/**
+ * Percent-encode a vault path so it is a valid `![](…)` markdown link target.
+ * encodeURI handles spaces/umlauts but leaves `#?()` alone — those break
+ * markdown links (or Obsidian's subpath parsing), so encode them by hand.
+ */
+export function encodeCoverPath(path: string): string {
+	return encodeURI(path).replace(
+		/[#?()]/g,
+		(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+	);
 }
 
 /**
@@ -62,17 +115,17 @@ export function resolveCoverForBook(
  */
 export async function downloadCover(
 	app: App,
-	cover: ResolvedCover,
+	url: string,
 	basename: string,
 	settings: BookSearchCoverSettings,
 ): Promise<string | null> {
-	const ext = cover.url.match(/\.(png)(\?|$)/i) ? "png" : "jpg";
+	const ext = url.match(/\.(png)(\?|$)/i) ? "png" : "jpg";
 	const folder = normalizePath(settings.coverFolder);
 	await ensureFolder(app, folder);
 	const path = normalizePath(`${folder}/${basename}.${ext}`);
 
 	try {
-		const res = await requestUrl({ url: cover.url, throw: false });
+		const res = await requestUrl({ url, throw: false });
 		if (res.status !== 200) return null;
 		const existing = app.vault.getFileByPath(path);
 		if (existing) {

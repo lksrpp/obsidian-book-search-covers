@@ -2,12 +2,27 @@ import { Notice, Plugin, TFile } from "obsidian";
 import {
 	type BookSearchCoverSettings,
 	BookSearchCoverSettingTab,
+	clampCoverSize,
 	DEFAULT_SETTINGS,
 } from "./settings";
-import { openBookSearch } from "./ui/search-modal";
-import { downloadCover, resolveCoverForBook, resolveCoverUrl } from "./cover";
-import { createBookNote, sanitizeFileName } from "./note";
+import { openBookSearch, type SearchOverrides } from "./ui/search-modal";
+import {
+	collectCoverCandidates,
+	type CoverCandidate,
+	downloadCover,
+	encodeCoverPath,
+} from "./cover";
+import { CoverPickerModal } from "./ui/cover-picker";
+import {
+	bookNoteBasename,
+	createBookNote,
+	findExistingBookNote,
+	reserveNotePath,
+} from "./note";
+import { isbnFromArtworkUrl } from "./providers/apple";
+import { fetchRichDescription } from "./providers/google";
 import type { BookResult } from "./model";
+import type { CoverMode } from "./settings";
 
 export default class BookSearchCoverPlugin extends Plugin {
 	settings!: BookSearchCoverSettings;
@@ -30,7 +45,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 			checkCallback: (checking) => {
 				const file = this.app.workspace.getActiveFile();
 				if (!file || file.extension !== "md") return false;
-				if (!checking) void this.fetchCoverForNote(file);
+				if (!checking) this.fetchCoverForNote(file);
 				return true;
 			},
 		});
@@ -39,6 +54,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const stored = (await this.loadData()) as Partial<BookSearchCoverSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, stored);
+		this.settings.coverSize = clampCoverSize(this.settings.coverSize);
 	}
 
 	async saveSettings(): Promise<void> {
@@ -46,73 +62,134 @@ export default class BookSearchCoverPlugin extends Plugin {
 	}
 
 	private startSearch(): void {
-		openBookSearch(this.app, this.settings, (book) => void this.createNote(book));
+		openBookSearch(this.app, this.settings, (book, overrides) =>
+			void this.createNote(book, overrides),
+		);
 	}
 
-	/** Resolve the cover, render the template, create + open the note. */
-	private async createNote(book: BookResult): Promise<void> {
-		const notice = new Notice("Fetching cover…", 0);
-		const cover = await resolveCoverForBook(book, this.settings);
-		let coverRef = "";
-		if (cover) {
-			coverRef = cover.url;
-			if (this.settings.coverMode === "download") {
-				const path = await downloadCover(
-					this.app,
-					cover,
-					sanitizeFileName(book.title),
-					this.settings,
+	/**
+	 * Create + open the note. The cover is the search provider's own image
+	 * (for Google: upscaled to `coverSize`); the picker command covers the
+	 * cases where that image is missing or poor. `overrides` carries the
+	 * per-search choices made in the modal (store, cover storage mode).
+	 */
+	private async createNote(book: BookResult, overrides: SearchOverrides): Promise<void> {
+		// Check for duplicates BEFORE creating (the new note would match itself),
+		// but show the warning last so it outlives the creation toasts.
+		const existing = findExistingBookNote(this.app, book);
+
+		const notice = new Notice("Preparing note…", 0);
+		try {
+			// The list endpoint flattens descriptions to one paragraph; the
+			// single-volume record keeps the publisher's paragraph structure.
+			// One extra request, only for the book actually being created.
+			if (book.googleVolumeId && this.settings.googleApiKey) {
+				const rich = await fetchRichDescription(
+					book.googleVolumeId,
+					this.settings.googleApiKey,
 				);
-				if (path) coverRef = path;
+				if (rich) book = { ...book, description: rich };
+			}
+
+			// Reserve the final note path first so a downloaded cover can share
+			// the note's exact basename (including any de-duplication suffix).
+			const path = await reserveNotePath(
+				this.app,
+				this.settings,
+				bookNoteBasename(this.settings, book),
+			);
+			const basename = path.slice(path.lastIndexOf("/") + 1).replace(/\.md$/, "");
+
+			let coverRef = book.providerCoverUrl ?? "";
+			if (coverRef && overrides.coverMode === "download") {
+				const localPath = await downloadCover(this.app, coverRef, basename, this.settings);
+				if (localPath) coverRef = encodeCoverPath(localPath);
 				else new Notice("Cover download failed; linking the remote URL.");
 			}
+			await this.finishCreate(book, coverRef, path, existing);
+		} finally {
+			notice.hide();
 		}
-		notice.hide();
+	}
+
+	private async finishCreate(
+		book: BookResult,
+		coverRef: string,
+		path: string,
+		existing: TFile | null,
+	): Promise<void> {
 
 		try {
-			const file = await createBookNote(this.app, this.settings, book, coverRef);
+			const file = await createBookNote(this.app, this.settings, book, coverRef, path);
 			await this.app.workspace.getLeaf("tab").openFile(file);
 			new Notice(`Created “${file.basename}”.`);
+			if (!coverRef) {
+				new Notice(
+					"No cover from the search provider — use “Fetch or replace cover” to pick one.",
+				);
+			}
+			if (existing) {
+				new Notice(
+					`A note for this book may already exist: “${existing.basename}”.`,
+					8000,
+				);
+			}
 		} catch (e) {
 			new Notice(e instanceof Error ? e.message : "Could not create note.");
 		}
 	}
 
-	/** Re-fetch a cover for an existing note using its frontmatter title/author. */
-	private async fetchCoverForNote(file: TFile): Promise<void> {
+	/**
+	 * Open the cover picker for an existing note: candidates from Google and
+	 * Apple (via the note's frontmatter title/author), re-queried when the
+	 * store override changes inside the modal.
+	 */
+	private fetchCoverForNote(file: TFile): void {
 		const fm = (this.app.metadataCache.getFileCache(file)?.frontmatter ??
 			{}) as Record<string, unknown>;
 		const title = typeof fm.title === "string" ? fm.title : file.basename;
 		const author = pickAuthor(fm);
 
-		const notice = new Notice("Fetching cover…", 0);
-		const cover = await resolveCoverUrl({ title, author }, this.settings);
-		if (!cover) {
-			notice.hide();
-			new Notice("No cover found.");
-			return;
-		}
+		new CoverPickerModal(
+			this.app,
+			this.settings,
+			title,
+			(country) =>
+				collectCoverCandidates(
+					{ title, author },
+					{ ...this.settings, preferredCountry: country },
+				),
+			(candidate, coverMode) => void this.applyCover(file, candidate, coverMode),
+		).open();
+	}
 
-		let coverRef = cover.url;
-		if (this.settings.coverMode === "download") {
-			const path = await downloadCover(
-				this.app,
-				cover,
-				sanitizeFileName(title),
-				this.settings,
-			);
-			if (path) coverRef = path;
+	/** Write the picked cover into the note's frontmatter (downloading first if chosen). */
+	private async applyCover(
+		file: TFile,
+		candidate: CoverCandidate,
+		coverMode: CoverMode,
+	): Promise<void> {
+		let coverRef = candidate.url;
+		if (coverMode === "download") {
+			// Name the cover after the note's basename so they stay paired.
+			const path = await downloadCover(this.app, candidate.url, file.basename, this.settings);
+			if (path) coverRef = encodeCoverPath(path);
 			else new Notice("Cover download failed; linking the remote URL.");
 		}
-		notice.hide();
+
+		// Apple sometimes embeds the edition's ISBN-13 in the artwork filename —
+		// backfill it when the note has none.
+		const foundIsbn =
+			candidate.source === "apple" ? isbnFromArtworkUrl(candidate.url) : undefined;
 
 		await this.app.fileManager.processFrontMatter(
 			file,
 			(front: Record<string, unknown>) => {
 				front[this.settings.coverProperty] = coverRef;
+				if (foundIsbn && !front.isbn) front.isbn = foundIsbn;
 			},
 		);
-		new Notice(`Cover set from ${cover.from}.`);
+		new Notice(`Cover set from ${candidate.source === "apple" ? "Apple" : "Google"}.`);
 	}
 }
 

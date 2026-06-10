@@ -1,8 +1,16 @@
 // Note creation: render the template, pick a collision-free path, write it.
+//
+// Path reservation (`reserveNotePath`) is separate from creation so the caller
+// can name the downloaded cover after the FINAL note basename (including any
+// de-duplication suffix) before writing the note.
 
 import { App, normalizePath, TFile } from "obsidian";
 import type { BookResult } from "./model";
 import { buildVars, renderNote, renderTemplate } from "./template";
+// Pure tokenizer borrowed from the (parked) Apple heuristic: lowercases, strips
+// punctuation/brackets/diacritics — which is also exactly what author
+// comparison across frontmatter shapes ("[[Name]]", "Soares, Nate") needs.
+import { normalizeTokens } from "./providers/apple";
 import type { BookSearchCoverSettings } from "./settings";
 
 // Illegal in an Obsidian note name (filesystem + link/markdown syntax). The
@@ -20,28 +28,23 @@ export function sanitizeFileName(name: string): string {
 	return cleaned.length > 0 ? cleaned : "Untitled";
 }
 
-/**
- * Create a book note from the template. Returns the created file. Never
- * overwrites: on a name collision a numeric suffix is appended.
- */
-export async function createBookNote(
-	app: App,
-	settings: BookSearchCoverSettings,
-	book: BookResult,
-	coverRef: string,
-): Promise<TFile> {
-	const vars = buildVars(book, coverRef);
-	const content = renderNote(settings.noteTemplate, vars);
-	const basename = sanitizeFileName(renderTemplate(settings.fileNameTemplate, vars));
-
-	const folder = normalizePath(settings.noteFolder);
-	await ensureFolder(app, folder);
-
-	const path = await uniquePath(app, folder, basename);
-	return app.vault.create(path, content);
+/** The note basename for a book per the file name template (pre-dedup). */
+export function bookNoteBasename(settings: BookSearchCoverSettings, book: BookResult): string {
+	return sanitizeFileName(renderTemplate(settings.fileNameTemplate, buildVars(book, "")));
 }
 
-async function uniquePath(app: App, folder: string, basename: string): Promise<string> {
+/**
+ * Reserve a collision-free `.md` path for `basename` in the note folder
+ * (creating the folder if needed). Never points at an existing file: on a name
+ * collision a numeric suffix is appended.
+ */
+export async function reserveNotePath(
+	app: App,
+	settings: BookSearchCoverSettings,
+	basename: string,
+): Promise<string> {
+	const folder = normalizePath(settings.noteFolder);
+	await ensureFolder(app, folder);
 	const base = folder === "" || folder === "/" ? basename : `${folder}/${basename}`;
 	let candidate = normalizePath(`${base}.md`);
 	let n = 1;
@@ -49,6 +52,88 @@ async function uniquePath(app: App, folder: string, basename: string): Promise<s
 		candidate = normalizePath(`${base} ${++n}.md`);
 	}
 	return candidate;
+}
+
+/** Render the template for a book and create the note at `path`. */
+export async function createBookNote(
+	app: App,
+	settings: BookSearchCoverSettings,
+	book: BookResult,
+	coverRef: string,
+	path: string,
+): Promise<TFile> {
+	const content = renderNote(settings.noteTemplate, buildVars(book, coverRef));
+	return app.vault.create(path, content);
+}
+
+/**
+ * Best-effort duplicate check over every markdown note's cached frontmatter
+ * (in-memory metadata cache — no disk I/O). Used to WARN before creating —
+ * never to block. Two signals, see `matchesBook`.
+ */
+export function findExistingBookNote(app: App, book: BookResult): TFile | null {
+	for (const file of app.vault.getMarkdownFiles()) {
+		const fm: Record<string, unknown> | undefined =
+			app.metadataCache.getFileCache(file)?.frontmatter;
+		if (fm && matchesBook(book, fm)) return file;
+	}
+	return null;
+}
+
+/**
+ * Does this note's frontmatter look like the same book?
+ *   1. Same ISBN (`isbn`/`isbn13`/`isbn10`, dashes ignored) — exact edition
+ *      identity. Different editions have different ISBNs, which is why the
+ *      title signal below exists at all.
+ *   2. Same title (case-insensitive) AND compatible authors. Frontmatter
+ *      author shapes vary (list of `"[[wikilinks]]"`, plain string,
+ *      comma-joined), so compatibility is a token overlap between any pair of
+ *      authors — the tokenizer drops brackets/punctuation, making "[[Nate
+ *      Soares]]" and "Soares, Nate" overlap. A title match where either side
+ *      has no usable author info still counts: this only ever warns, and a
+ *      rare false alarm is one dismissible notice while a silent skip defeats
+ *      the check.
+ */
+export function matchesBook(book: BookResult, fm: Record<string, unknown>): boolean {
+	const wantIsbns = new Set([book.isbn13, book.isbn10].filter((x): x is string => !!x));
+	const fmIsbns = [fm.isbn, fm.isbn13, fm.isbn10]
+		.map(normalizeIsbn)
+		.filter((x): x is string => !!x);
+	if (fmIsbns.some((x) => wantIsbns.has(x))) return true;
+
+	if (
+		typeof fm.title !== "string" ||
+		fm.title.trim().toLowerCase() !== book.title.trim().toLowerCase()
+	) {
+		return false;
+	}
+
+	const bookAuthors = book.authors.map(normalizeTokens).filter((t) => t.size > 0);
+	const fmAuthors = frontmatterAuthors(fm).map(normalizeTokens).filter((t) => t.size > 0);
+	if (bookAuthors.length === 0 || fmAuthors.length === 0) return true;
+	return bookAuthors.some((b) => fmAuthors.some((f) => intersects(b, f)));
+}
+
+/** All string values found under `author`/`authors`, flattened. */
+function frontmatterAuthors(fm: Record<string, unknown>): string[] {
+	return [fm.author, fm.authors]
+		.flatMap((v): unknown[] => (Array.isArray(v) ? (v as unknown[]) : [v]))
+		.filter((v): v is string => typeof v === "string");
+}
+
+function intersects(a: Set<string>, b: Set<string>): boolean {
+	for (const t of a) if (b.has(t)) return true;
+	return false;
+}
+
+/** Frontmatter ISBN value (string or YAML number) → bare digit string. */
+function normalizeIsbn(value: unknown): string | null {
+	if (typeof value === "number") return String(value);
+	if (typeof value === "string") {
+		const bare = value.replace(/[-\s]/g, "");
+		return bare === "" ? null : bare;
+	}
+	return null;
 }
 
 async function ensureFolder(app: App, folder: string): Promise<void> {

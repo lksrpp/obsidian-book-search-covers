@@ -25,6 +25,12 @@ export interface BookResult {
 	 * cover fallback when Apple finds nothing — never the primary cover.
 	 */
 	providerCoverUrl?: string;
+	/**
+	 * Google volume id — lets us fetch the single-volume record for the picked
+	 * book, whose description keeps paragraph structure (the list endpoint's
+	 * is flattened to one line).
+	 */
+	googleVolumeId?: string;
 	source: BookSource;
 }
 

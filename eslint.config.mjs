@@ -3,7 +3,16 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 
 export default tseslint.config(
 	{
-		ignores: ["main.js", "node_modules/", "**/*.mjs", "**/*.json"],
+		// tests/ and vitest.config.ts are excluded: they are not part of
+		// tsconfig, which the type-aware obsidianmd rules require.
+		ignores: [
+			"main.js",
+			"node_modules/",
+			"tests/",
+			"vitest.config.ts",
+			"**/*.mjs",
+			"**/*.json",
+		],
 	},
 	...obsidianmd.configs.recommended,
 	{
