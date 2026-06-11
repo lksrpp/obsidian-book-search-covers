@@ -86,7 +86,7 @@ If you use Templater, the two get along nicely. The template file is a regular n
 ## Getting started
 
 1. Install **Book Search & Covers** from Obsidian's Community plugins and enable it.
-2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, search uses Open Library, which works fine but with a smaller catalog and returns leaner metadata.
+2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, search uses Open Library, which works fine but with a smaller catalog and returns leaner metadata.
 3. Have a look at the settings: pick your note folder, your store region, and how covers should be stored. The defaults are sensible, so feel free to just start searching.
 
 ## Network use and privacy
