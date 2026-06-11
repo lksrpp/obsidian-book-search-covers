@@ -1,8 +1,10 @@
 # Release process
 
+> Created: 2026-06-11
+
 How to ship a new version of this plugin, and (one-time) how to get it into
-the Obsidian community directory. Written 2026-06; check the sources at the
-bottom if something looks off, the process changed before (PR-based → portal).
+the Obsidian community directory. If something looks off, check the sources
+at the bottom; the process changed before (PR-based → portal).
 
 ## What a release is
 
