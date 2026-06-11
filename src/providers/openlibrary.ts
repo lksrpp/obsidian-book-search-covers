@@ -3,7 +3,7 @@
 // is to *find the book*; cover handling stays with Apple → Google as elsewhere.
 
 import { requestUrl } from "obsidian";
-import type { BookResult } from "../model";
+import { asIsbnQuery, type BookResult } from "../model";
 
 const ENDPOINT = "https://openlibrary.org/search.json";
 const LIMIT = 5;
@@ -26,7 +26,9 @@ interface OlDoc {
 /** Search Open Library. Returns up to 5 normalized results, or [] on failure. */
 export async function searchOpenLibrary(query: string): Promise<BookResult[]> {
 	const url = new URL(ENDPOINT);
-	url.searchParams.set("q", query);
+	// An ISBN-shaped query becomes the precise isbn: field lookup.
+	const isbn = asIsbnQuery(query);
+	url.searchParams.set("q", isbn ? `isbn:${isbn}` : query);
 	url.searchParams.set("limit", String(LIMIT));
 	url.searchParams.set(
 		"fields",

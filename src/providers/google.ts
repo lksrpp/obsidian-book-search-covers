@@ -5,7 +5,7 @@
 // The key lives in plugin settings (data.json, local to the device).
 
 import { requestUrl } from "obsidian";
-import type { BookResult } from "../model";
+import { asIsbnQuery, type BookResult } from "../model";
 
 const ENDPOINT = "https://www.googleapis.com/books/v1/volumes";
 const MAX_RESULTS = 5;
@@ -41,7 +41,9 @@ export async function searchGoogleBooks(
 		throw new GoogleBooksError("No Google Books API key set (see plugin settings).");
 	}
 	const url = new URL(ENDPOINT);
-	url.searchParams.set("q", query);
+	// An ISBN-shaped query becomes the precise isbn: lookup.
+	const isbn = asIsbnQuery(query);
+	url.searchParams.set("q", isbn ? `isbn:${isbn}` : query);
 	url.searchParams.set("maxResults", String(MAX_RESULTS));
 	url.searchParams.set("country", preferredCountry);
 	url.searchParams.set("key", apiKey);

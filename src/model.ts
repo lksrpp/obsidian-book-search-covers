@@ -44,3 +44,13 @@ export function yearOf(book: BookResult): string | undefined {
 export function preferredIsbn(book: BookResult): string | undefined {
 	return book.isbn13 ?? book.isbn10;
 }
+
+/**
+ * Compact ISBN when the whole query is ISBN-shaped (10 or 13 digits, dashes
+ * and spaces allowed, ISBN-10 check digit may be X), else null. Lets the
+ * providers switch to their precise isbn: lookup instead of free-text search.
+ */
+export function asIsbnQuery(raw: string): string | null {
+	const compact = raw.replace(/[-\s]/g, "");
+	return /^(?:\d{13}|\d{9}[\dXx])$/.test(compact) ? compact.toUpperCase() : null;
+}

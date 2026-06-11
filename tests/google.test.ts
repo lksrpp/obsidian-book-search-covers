@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { htmlDescriptionToMarkdown, upscaleGoogleCover } from "../src/providers/google";
+import { asIsbnQuery } from "../src/model";
+
+describe("asIsbnQuery", () => {
+	it("accepts 13- and 10-digit ISBNs with dashes or spaces", () => {
+		expect(asIsbnQuery("9780316595643")).toBe("9780316595643");
+		expect(asIsbnQuery("978-0-316-59564-3")).toBe("9780316595643");
+		expect(asIsbnQuery("978 0316 595 643")).toBe("9780316595643");
+		expect(asIsbnQuery("0316595640")).toBe("0316595640");
+		expect(asIsbnQuery("0-8044-2957-x")).toBe("080442957X");
+	});
+
+	it("rejects everything else", () => {
+		expect(asIsbnQuery("dune frank herbert")).toBeNull();
+		expect(asIsbnQuery("12345")).toBeNull();
+		expect(asIsbnQuery("97803165956430")).toBeNull(); // 14 digits
+		expect(asIsbnQuery("dune 9780316595643")).toBeNull(); // mixed text
+	});
+});
 
 describe("htmlDescriptionToMarkdown", () => {
 	it("converts <p> blocks to paragraphs and strips bold/italic", () => {
