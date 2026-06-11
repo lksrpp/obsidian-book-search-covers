@@ -81,7 +81,7 @@ Templates use simple `{{variable}}` placeholders in the frontmatter and body. Ev
 
 ### Plays well with Templater
 
-If you use the excellent  (it is a fantastic plugin), the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
+If you use Templater, the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
 
 ## Getting started
 
