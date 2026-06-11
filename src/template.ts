@@ -59,7 +59,7 @@ export const VARIABLE_DOCS: ReadonlyArray<{ name: string; desc: string }> = [
 	{ name: "description", desc: "Publisher's description (body only, too long for frontmatter)" },
 	{
 		name: "descriptionCallout",
-		desc: "Description as a collapsed callout block; no callout (empty variable) when the book has no description",
+		desc: "Description as a collapsed callout block; no callout (empty variable) when the book has no description. Custom callout title: {{descriptionCallout:Inhalt}}",
 	},
 	{ name: "publisher", desc: "Publisher name" },
 	{ name: "publishedDate", desc: "Raw publish date, e.g. 2021-05-04" },
@@ -89,15 +89,16 @@ export function escapeYamlDouble(s: string): string {
  * Every line gets the `> ` prefix so multi-paragraph descriptions stay inside
  * the callout; blank lines become a bare `>`. Empty description renders as an
  * empty string, so the template line simply collapses to a blank line instead
- * of leaving a callout with no content.
+ * of leaving a callout with no content. The callout title is overridable per
+ * template via `{{descriptionCallout:My title}}`.
  */
-export function descriptionCallout(description: string): string {
+export function descriptionCallout(description: string, title = "Description"): string {
 	const text = description.trim();
 	if (text === "") return "";
 	const body = text
 		.split(/\r?\n/)
 		.map((line) => (line.trim() === "" ? ">" : `> ${line}`));
-	return ["> [!summary]- Description", ...body].join("\n");
+	return [`> [!summary]- ${title}`, ...body].join("\n");
 }
 
 /**
@@ -193,9 +194,19 @@ function expandYamlLists(block: string, vars: TemplateVars): string {
 }
 
 function substitute(text: string, vars: TemplateVars, escapeForYaml: boolean): string {
-	return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => {
-		const value = vars[key] ?? "";
-		const s = Array.isArray(value) ? value.join(", ") : value;
-		return escapeForYaml ? escapeYamlDouble(s) : s;
-	});
+	return text.replace(
+		/\{\{\s*(\w+)(?::([^}]*))?\s*\}\}/g,
+		(match, key: string, arg: string | undefined) => {
+			// Only descriptionCallout takes an argument (a custom callout
+			// title, e.g. {{descriptionCallout:Inhalt}}). Any other token with
+			// an argument stays literal, exactly as before.
+			if (arg !== undefined && key !== "descriptionCallout") return match;
+			const value =
+				arg !== undefined
+					? descriptionCallout(String(vars.description ?? ""), arg.trim())
+					: (vars[key] ?? "");
+			const s = Array.isArray(value) ? value.join(", ") : value;
+			return escapeForYaml ? escapeYamlDouble(s) : s;
+		},
+	);
 }

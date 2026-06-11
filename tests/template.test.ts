@@ -53,6 +53,24 @@ describe("descriptionCallout", () => {
 		);
 		expect(out).toBe("> [!summary]- Description\n> Blurb.");
 	});
+
+	it("accepts a custom callout title as argument", () => {
+		const vars = buildVars({ ...BOOK, description: "Blurb." }, "");
+		expect(renderTemplate("{{descriptionCallout:Inhalt}}", vars)).toBe(
+			"> [!summary]- Inhalt\n> Blurb.",
+		);
+		expect(renderTemplate("{{descriptionCallout: Mit Leerzeichen }}", vars)).toBe(
+			"> [!summary]- Mit Leerzeichen\n> Blurb.",
+		);
+	});
+
+	it("renders empty for a custom title without description", () => {
+		expect(renderTemplate("{{descriptionCallout:Inhalt}}", buildVars(BOOK, ""))).toBe("");
+	});
+
+	it("leaves arguments on other variables literal", () => {
+		expect(renderTemplate("{{title:nope}}", buildVars(BOOK, ""))).toBe("{{title:nope}}");
+	});
 });
 
 describe("date variables", () => {

@@ -60,7 +60,8 @@ Use `{{var}}` placeholders in the template (frontmatter + body):
 
 `title`, `subtitle`, `author`, `authors`, `authorsYamlLinks` (YAML list of
 `[[wikilinks]]`), `description`, `descriptionCallout` (the description as a
-collapsed `> [!summary]-` callout; empty when there is no description),
+collapsed `> [!summary]-` callout; empty when there is no description; custom
+callout title via `{{descriptionCallout:Inhalt}}`),
 `publisher`, `publishedDate`, `year`, `pageCount`, `isbn`, `isbn13`, `isbn10`,
 `categories`, `categoriesYamlList`, `language`, `seriesName`, `seriesNumber`,
 `source`, `cover`, `date` (note creation date, `YYYY-MM-DD`), `datetime`
