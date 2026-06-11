@@ -55,6 +55,15 @@ describe("descriptionCallout", () => {
 	});
 });
 
+describe("date variables", () => {
+	it("renders {{date}} and {{datetime}} from the injected timestamp", () => {
+		const now = new Date(2026, 5, 11, 9, 5, 3); // 2026-06-11 09:05:03 local
+		const vars = buildVars(BOOK, "", now);
+		expect(renderTemplate("{{date}}", vars)).toBe("2026-06-11");
+		expect(renderTemplate("{{datetime}}", vars)).toBe("2026-06-11 09:05:03");
+	});
+});
+
 describe("renderTemplate", () => {
 	it("substitutes scalars raw and renders unknown vars empty", () => {
 		const out = renderTemplate("{{title}} ({{year}}) {{nope}}", buildVars(BOOK, ""));

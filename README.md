@@ -63,7 +63,8 @@ Use `{{var}}` placeholders in the template (frontmatter + body):
 collapsed `> [!summary]-` callout; empty when there is no description),
 `publisher`, `publishedDate`, `year`, `pageCount`, `isbn`, `isbn13`, `isbn10`,
 `categories`, `categoriesYamlList`, `language`, `seriesName`, `seriesNumber`,
-`source`, `cover`.
+`source`, `cover`, `date` (note creation date, `YYYY-MM-DD`), `datetime`
+(`YYYY-MM-DD HH:mm:ss`).
 
 Reading status, rating, dates, tags, etc. are **not** built in by design; add
 them to your own template file.

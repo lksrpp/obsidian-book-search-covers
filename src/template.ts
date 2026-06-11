@@ -75,6 +75,8 @@ export const VARIABLE_DOCS: ReadonlyArray<{ name: string; desc: string }> = [
 	{ name: "seriesNumber", desc: "Number within the series, if known" },
 	{ name: "source", desc: "Search provider: google or openlibrary" },
 	{ name: "cover", desc: "Cover URL or vault path, per the cover storage mode" },
+	{ name: "date", desc: "Note creation date, YYYY-MM-DD" },
+	{ name: "datetime", desc: "Note creation date and time, YYYY-MM-DD HH:mm:ss" },
 ];
 
 /** Escape a string so it is safe inside a double-quoted YAML scalar. */
@@ -101,8 +103,10 @@ export function descriptionCallout(description: string): string {
 /**
  * Build the variable map for a book. `coverRef` is whatever should appear for
  * `{{cover}}` — a remote URL or a vault-relative path, decided by the caller.
+ * `now` is the note-creation timestamp behind `{{date}}`/`{{datetime}}`,
+ * injectable for tests.
  */
-export function buildVars(book: BookResult, coverRef: string): TemplateVars {
+export function buildVars(book: BookResult, coverRef: string, now = new Date()): TemplateVars {
 	return {
 		title: book.title,
 		subtitle: book.subtitle ?? "",
@@ -127,7 +131,22 @@ export function buildVars(book: BookResult, coverRef: string): TemplateVars {
 		seriesNumber: book.seriesNumber ?? "",
 		source: book.source,
 		cover: coverRef,
+		date: formatDate(now),
+		datetime: `${formatDate(now)} ${formatTime(now)}`,
 	};
+}
+
+/** Local date as YYYY-MM-DD (not UTC; the note is created in the user's day). */
+function formatDate(d: Date): string {
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function formatTime(d: Date): string {
+	return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function pad(n: number): string {
+	return String(n).padStart(2, "0");
 }
 
 /** Replace every `{{name}}` token, raw. Unknown tokens render as empty string. */
