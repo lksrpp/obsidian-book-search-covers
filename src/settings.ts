@@ -73,7 +73,7 @@ export interface BookSearchCoverSettings {
 	templateFile: string;
 }
 
-export const DEFAULT_FILENAME_TEMPLATE = "{{title}}";
+export const DEFAULT_FILENAME_TEMPLATE = "{{title}} - {{authors}}";
 
 /** Suggested template file path for the "create template file" button. */
 export const SUGGESTED_TEMPLATE_PATH = "Templates/Book template.md";

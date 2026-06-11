@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { App, TFile } from "obsidian";
 import {
+	bookNoteBasename,
 	createTemplateFile,
 	loadNoteTemplate,
 	matchesBook,
 	sanitizeFileName,
 } from "../src/note";
 import type { BookResult } from "../src/model";
-import type { BookSearchCoverSettings } from "../src/settings";
+import { DEFAULT_SETTINGS, type BookSearchCoverSettings } from "../src/settings";
 import { DEFAULT_TEMPLATE } from "../src/template";
 
 const BOOK: BookResult = {
@@ -17,6 +18,20 @@ const BOOK: BookResult = {
 	isbn10: "0316595640",
 	source: "google",
 };
+
+describe("bookNoteBasename", () => {
+	it("defaults to title - authors", () => {
+		expect(bookNoteBasename(DEFAULT_SETTINGS, BOOK)).toBe(
+			"If Anyone Builds It, Everyone Dies - Eliezer Yudkowsky, Nate Soares",
+		);
+	});
+
+	it("drops the dangling separator when there are no authors", () => {
+		expect(bookNoteBasename(DEFAULT_SETTINGS, { ...BOOK, authors: [] })).toBe(
+			"If Anyone Builds It, Everyone Dies",
+		);
+	});
+});
 
 describe("matchesBook — ISBN signal", () => {
 	it("matches on isbn with dashes and on isbn13/isbn10 properties", () => {
