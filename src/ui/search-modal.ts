@@ -89,7 +89,7 @@ export class BookSearchModal extends Modal {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				debounced.cancel();
-				if (this.selected >= 0) this.pick(this.results[this.selected]);
+				if (this.selected >= 0) void this.pick(this.results[this.selected]);
 				else void this.runSearch();
 			} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
 				e.preventDefault();
@@ -185,7 +185,7 @@ export class BookSearchModal extends Modal {
 			if (book.description) {
 				text.createDiv({ cls: "bsc-result-desc", text: book.description });
 			}
-			row.addEventListener("click", () => this.pick(book));
+			row.addEventListener("click", () => void this.pick(book));
 			row.addEventListener("mousemove", () => this.setSelection(i));
 		});
 	}
