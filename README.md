@@ -2,7 +2,7 @@
 
 An Obsidian plugin for everyone who keeps their book library in their vault. Search as you type, pick the exact edition you mean, and get a finished book note from your own template, complete with a high resolution cover.
 
-Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with Obsidian Bases). New notes get their cover straight from the search provider, requested in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
+Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with [Obsidian Bases](https://obsidian.md/help/bases)). New notes get their cover straight from the search provider, requested in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
 
 ## What it does (at a glance)
 
@@ -42,9 +42,9 @@ The chosen cover is written into the note's cover property (configurable), as a 
 
 You set a default in the settings and can override it per search in both modals.
 
-## Making the notes your own
+## Customize new book notes
 
-The built-in **Note template** works out of the box and is editable right in the settings. If you prefer managing templates as notes, point **Template file** at any note in your vault instead; a button next to the setting turns your current inline template into such a file so nothing is lost when you switch.
+The built-in **Note template** works out of the box and is editable right in the settings. If you prefer managing templates as notes (e.g., leveraging the [Templater](https://github.com/SilentVoid13/Templater) plugin), point **Template file** at any note in your vault instead; a button next to the setting turns your current inline template into such a file so nothing is lost when you switch.
 
 Templates use simple `{{variable}}` placeholders in the frontmatter and body. Even the file name is a template (default: `{{title}} - {{authors}}`).
 
@@ -81,7 +81,7 @@ Templates use simple `{{variable}}` placeholders in the frontmatter and body. Ev
 
 ### Plays well with Templater
 
-If you use the excellent [Templater](https://github.com/SilentVoid13/Templater) (it is a fantastic plugin), the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
+If you use the excellent  (it is a fantastic plugin), the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
 
 ## Getting started
 
