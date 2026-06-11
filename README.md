@@ -2,11 +2,9 @@
 
 An Obsidian plugin for everyone who keeps their book library in their vault. Search as you type, pick the exact edition you mean, and get a finished book note from your own template, complete with a high resolution cover.
 
-![Adding a new book note](docs/assets/new-book-note.gif)
+Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with Obsidian Bases). New notes get their cover straight from the search provider, requested in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
 
-Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with Obsidian Bases). New notes get their cover straight from the search provider, requested in high resolution instead of the usual small thumbnail. And when that image is not good enough, the cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
-
-## What it does
+## What it does (at a glance)
 
 - **Live search.** Results appear while you type, with cover, title, author, year, and blurb. No multi-step dialogs that open and close; just type, see, pick.
 - **High resolution covers.** Up to 800x800 pixels and beyond, instead of the small thumbnails most book plugins settle for.
@@ -17,11 +15,15 @@ Covers are the heart of this plugin. Sharp, large images make a book library fee
 
 ## Adding a new book
 
+Find a new book and add it to your Obsidian library.
+
+![Adding a new book note](docs/assets/new-book-note.gif)
+
 1. Click the book ribbon icon or run the **New book note** command.
 2. Type a title, an author, or both. Results appear live. You can also paste an ISBN to jump straight to one exact edition.
 3. Pick the edition you mean. The note is created from your template in your note folder and opens right away.
 
-A few nice touches along the way: the store region and the cover storage mode can be switched right in the search modal for that one search, and if a note for the book already exists you are asked first instead of ending up with a surprise duplicate.
+A few nice touches along the way: If a note for the book already exists you are asked first instead of ending up with a surprise duplicate. The store region and the cover storage mode defaults are defined in settings. They can be switched right in the search modal for that one search.
 
 ## Giving an existing note a better cover
 
@@ -77,18 +79,14 @@ Templates use simple `{{variable}}` placeholders in the frontmatter and body. Ev
 
 </details>
 
-Reading status, rating, dates read, tags, and similar fields are deliberately not built in. Add the properties you care about to your template and they will be part of every new book note.
-
-> **A note on YAML:** substitution is literal. The default template double-quotes scalar frontmatter values; keep free-form text like `{{description}}` in the note body rather than in frontmatter.
-
 ### Plays well with Templater
 
-If you use the excellent [Templater](https://github.com/SilentVoid13/Templater) (tip of the hat, it is a fantastic plugin), the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
+If you use the excellent [Templater](https://github.com/SilentVoid13/Templater) (it is a fantastic plugin), the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
 
 ## Getting started
 
 1. Install **Book Search & Covers** from Obsidian's Community plugins and enable it.
-2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, search uses Open Library, which works fine but returns leaner metadata.
+2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, search uses Open Library, which works fine but with a smaller catalog and returns leaner metadata.
 3. Have a look at the settings: pick your note folder, your store region, and how covers should be stored. The defaults are sensible, so feel free to just start searching.
 
 ## Network use and privacy
