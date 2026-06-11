@@ -64,7 +64,7 @@ Now we tell Google you want to use the Books service.
 ## Step 5 — Paste it into the plugin
 
 1. Open Obsidian.
-2. Go to **Settings → Book Search & Covers**.
+2. Go to **Settings → Book Search + Covers**.
 3. Paste your key into the **Google Books API key** field.
 4. You're ready to search for books and covers!
 
