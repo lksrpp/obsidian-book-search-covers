@@ -6,6 +6,7 @@ import {
 	DEFAULT_SETTINGS,
 } from "./settings";
 import { openBookSearch, type SearchOverrides } from "./ui/search-modal";
+import { confirmDuplicate } from "./ui/duplicate-dialog";
 import {
 	collectCoverCandidates,
 	type CoverCandidate,
@@ -63,8 +64,27 @@ export default class BookSearchCoverPlugin extends Plugin {
 
 	private startSearch(): void {
 		openBookSearch(this.app, this.settings, (book, overrides) =>
-			void this.createNote(book, overrides),
+			this.handlePick(book, overrides),
 		);
+	}
+
+	/**
+	 * Duplicate gate for a picked book. Runs while the search modal is still
+	 * open underneath, so cancelling the dialog drops the user back into their
+	 * results. Returns whether the search modal should close.
+	 */
+	private async handlePick(book: BookResult, overrides: SearchOverrides): Promise<boolean> {
+		const existing = findExistingBookNote(this.app, book);
+		if (existing) {
+			const choice = await confirmDuplicate(this.app, existing);
+			if (choice === "cancel") return false;
+			if (choice === "open") {
+				await this.app.workspace.getLeaf("tab").openFile(existing);
+				return true;
+			}
+		}
+		void this.createNote(book, overrides);
+		return true;
 	}
 
 	/**
@@ -74,10 +94,6 @@ export default class BookSearchCoverPlugin extends Plugin {
 	 * per-search choices made in the modal (store, cover storage mode).
 	 */
 	private async createNote(book: BookResult, overrides: SearchOverrides): Promise<void> {
-		// Check for duplicates BEFORE creating (the new note would match itself),
-		// but show the warning last so it outlives the creation toasts.
-		const existing = findExistingBookNote(this.app, book);
-
 		const notice = new Notice("Preparing note…", 0);
 		try {
 			// The list endpoint flattens descriptions to one paragraph; the
@@ -106,19 +122,13 @@ export default class BookSearchCoverPlugin extends Plugin {
 				if (localPath) coverRef = encodeCoverPath(localPath);
 				else new Notice("Cover download failed; linking the remote URL.");
 			}
-			await this.finishCreate(book, coverRef, path, existing);
+			await this.finishCreate(book, coverRef, path);
 		} finally {
 			notice.hide();
 		}
 	}
 
-	private async finishCreate(
-		book: BookResult,
-		coverRef: string,
-		path: string,
-		existing: TFile | null,
-	): Promise<void> {
-
+	private async finishCreate(book: BookResult, coverRef: string, path: string): Promise<void> {
 		try {
 			const file = await createBookNote(this.app, this.settings, book, coverRef, path);
 			await this.app.workspace.getLeaf("tab").openFile(file);
@@ -126,12 +136,6 @@ export default class BookSearchCoverPlugin extends Plugin {
 			if (!coverRef) {
 				new Notice(
 					"No cover from the search provider. Use “Fetch or replace cover” to pick one.",
-				);
-			}
-			if (existing) {
-				new Notice(
-					`A note for this book may already exist: “${existing.basename}”.`,
-					8000,
 				);
 			}
 		} catch (e) {

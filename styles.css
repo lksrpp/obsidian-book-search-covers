@@ -303,6 +303,15 @@ body.is-mobile .bsc-cover-card-img {
 	color: var(--text-faint);
 }
 
+/* ── Duplicate dialog ──────────────────────────────────────────────────── */
+.bsc-dialog-buttons {
+	display: flex;
+	gap: 0.5em;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+	margin-top: 1em;
+}
+
 /* ── Settings ──────────────────────────────────────────────────────────── */
 .bsc-settings-intro {
 	margin-top: 0.75em;

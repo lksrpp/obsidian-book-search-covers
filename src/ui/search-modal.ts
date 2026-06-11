@@ -32,13 +32,15 @@ export class BookSearchModal extends Modal {
 	private results: BookResult[] = [];
 	private selected = -1;
 	private generation = 0;
+	private picking = false;
 	private inputEl!: HTMLInputElement;
 	private resultsEl!: HTMLElement;
 
 	constructor(
 		app: App,
 		private settings: BookSearchCoverSettings,
-		private onPick: (book: BookResult, overrides: SearchOverrides) => void,
+		/** Resolves to true when the modal should close (false = stay open, e.g. duplicate cancel). */
+		private onPick: (book: BookResult, overrides: SearchOverrides) => Promise<boolean>,
 	) {
 		super(app);
 		this.country = settings.preferredCountry;
@@ -204,13 +206,20 @@ export class BookSearchModal extends Modal {
 		if (index >= 0) rows[index]?.scrollIntoView({ block: "nearest" });
 	}
 
-	private pick(book: BookResult | undefined): void {
-		if (!book) return;
-		this.close();
-		this.onPick(book, {
-			country: this.country,
-			coverMode: this.coverMode,
-		});
+	private async pick(book: BookResult | undefined): Promise<void> {
+		if (!book || this.picking) return;
+		// Keep the modal open underneath while the handler may still ask about
+		// duplicates; "cancel" there returns the user right back to the results.
+		this.picking = true;
+		try {
+			const close = await this.onPick(book, {
+				country: this.country,
+				coverMode: this.coverMode,
+			});
+			if (close) this.close();
+		} finally {
+			this.picking = false;
+		}
 	}
 }
 
@@ -275,11 +284,15 @@ export function addKeyHints(
 	}
 }
 
-/** Open the search modal, calling `onPick` with the chosen book + overrides. */
+/**
+ * Open the search modal, calling `onPick` with the chosen book + overrides.
+ * `onPick` resolves to whether the modal should close; false keeps it open
+ * (used when the duplicate dialog is cancelled).
+ */
 export function openBookSearch(
 	app: App,
 	settings: BookSearchCoverSettings,
-	onPick: (book: BookResult, overrides: SearchOverrides) => void,
+	onPick: (book: BookResult, overrides: SearchOverrides) => Promise<boolean>,
 ): void {
 	new BookSearchModal(app, settings, onPick).open();
 }
