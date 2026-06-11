@@ -96,10 +96,6 @@ export class CoverPickerModal extends Modal {
 		candidates.forEach((candidate, i) => {
 			const card = this.gridEl.createEl("button", { cls: "bsc-cover-card" });
 			const img = card.createEl("img", { cls: "bsc-cover-card-img" });
-			img.addEventListener("load", () => img.addClass("is-loaded"));
-			img.src = candidate.url;
-			img.loading = "lazy";
-			if (img.complete) img.addClass("is-loaded");
 			const caption = card.createDiv({ cls: "bsc-cover-card-caption" });
 			caption.createDiv({ cls: "bsc-cover-card-title", text: candidate.title });
 			if (candidate.author) {
@@ -108,10 +104,23 @@ export class CoverPickerModal extends Modal {
 			if (candidate.year) {
 				caption.createDiv({ cls: "bsc-cover-card-year", text: candidate.year });
 			}
+			// Actual pixel size, filled in once the image loads — lets
+			// sharpness be compared by number, not by squinting.
+			const dims = caption.createDiv({ cls: "bsc-cover-card-dims" });
 			caption.createDiv({
 				cls: "bsc-cover-card-api",
 				text: `API: ${SOURCE_NAMES[candidate.source]}`,
 			});
+			const markLoaded = () => {
+				img.addClass("is-loaded");
+				if (img.naturalWidth > 0) {
+					dims.setText(`${img.naturalWidth}×${img.naturalHeight} px`);
+				}
+			};
+			img.addEventListener("load", markLoaded);
+			img.src = candidate.url;
+			img.loading = "lazy";
+			if (img.complete) markLoaded();
 			card.addEventListener("click", () => this.pickAt(i));
 			card.addEventListener("mousemove", () => this.setSelection(i));
 		});

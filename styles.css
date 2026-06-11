@@ -298,6 +298,12 @@ body.is-mobile .bsc-cover-card-img {
 	font-size: var(--font-smallest);
 	color: var(--text-faint);
 }
+.bsc-cover-card-dims {
+	font-size: var(--font-smallest);
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+	min-height: 1.2em; /* reserve the line so captions don't jump on load */
+}
 .bsc-cover-card-api {
 	font-size: var(--font-smallest);
 	color: var(--text-faint);
