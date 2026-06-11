@@ -4,7 +4,7 @@ An Obsidian plugin for everyone who keeps their book library in their vault. Sea
 
 ![Adding a new book note](docs/assets/new-book-note.gif)
 
-Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with Obsidian Bases). Book Search & Covers pulls metadata from Google Books and Open Library and combines it with the crisp artwork from Apple's catalog, so your notes get covers that still look great at full size.
+Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with Obsidian Bases). New notes get their cover straight from the search provider, requested in high resolution instead of the usual small thumbnail. And when that image is not good enough, the cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
 
 ## What it does
 
