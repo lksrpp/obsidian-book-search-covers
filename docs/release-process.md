@@ -62,8 +62,10 @@ requests against `obsidianmd/obsidian-releases`:
    so it must match the released version.
 3. Sign in at <https://community.obsidian.md> with the Obsidian account and
    link the GitHub account.
-4. Plugins → New plugin → enter `lksrpp/obsidian-book-search-covers`, accept
-   the developer policies, submit.
+4. Go to the plugins section at
+   <https://community.obsidian.md/account/plugins> → New plugin → enter
+   `lksrpp/obsidian-book-search-covers`, accept the developer policies,
+   submit.
 5. An automated review scans the code (security, API usage, guidelines).
    Address feedback by pushing fixes and publishing a new release with a
    bumped version; re-review happens against the new release.
