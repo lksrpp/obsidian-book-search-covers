@@ -59,7 +59,7 @@ export const VARIABLE_DOCS: ReadonlyArray<{ name: string; desc: string }> = [
 	{ name: "description", desc: "Publisher's description (body only, too long for frontmatter)" },
 	{
 		name: "descriptionCallout",
-		desc: "Description as a collapsed callout block; no callout (empty variable) when the book has no description. Custom callout title: {{descriptionCallout:Inhalt}}",
+		desc: "Description as a collapsed callout block; no callout (empty variable) when the book has no description. Custom callout title: {{descriptionCallout:Description}}",
 	},
 	{ name: "publisher", desc: "Publisher name" },
 	{ name: "publishedDate", desc: "Raw publish date, e.g. 2021-05-04" },
