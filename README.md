@@ -1,93 +1,114 @@
 # Book Search & Covers
 
-An Obsidian plugin that searches for a book, lets you pick the right edition from
-a rich result list, and creates a note from your own template, including a
-**high-resolution cover**.
+An Obsidian plugin for everyone who keeps their book library in their vault. Search as you type, pick the exact edition you mean, and get a finished book note from your own template, complete with a high resolution cover.
 
-It uses **Google Books** for metadata (titles, authors, ISBN, page count,
-publisher; English and German), **Apple iTunes Search** for sharp hi-res
-covers, and **Open Library** as the keyless search provider and as a fallback
-when Google finds nothing.
+![Adding a new book note](docs/assets/new-book-note.gif)
 
-> Single-user, self-hosted-minded. Installed privately via [BRAT](https://github.com/TfTHacker/obsidian42-brat).
+Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with Obsidian Bases). Book Search & Covers pulls metadata from Google Books and Open Library and combines it with the crisp artwork from Apple's catalog, so your notes get covers that still look great at full size.
 
-## How it works
+## What it does
 
-1. Run **New book note** (ribbon icon or command).
-2. Type to search. Results appear live, with cover, title, author, year and
-   blurb. The store region and the cover storage mode can be changed right in
-   the modal, for that search only.
-3. Pick an edition. The note is created from your template in the note folder,
-   with the search provider's cover image.
+- **Live search.** Results appear while you type, with cover, title, author, year, and blurb. No multi-step dialogs that open and close; just type, see, pick.
+- **High resolution covers.** Up to 800x800 pixels and beyond, instead of the small thumbnails most book plugins settle for.
+- **Your template, your note.** Notes are created from a template you control, from the frontmatter properties down to the file name.
+- **Covers as links or files.** Reference the cover by URL, or download it into your vault for a fully portable, offline library.
+- **Backfill your existing library.** Give any book note a better cover, including notes you wrote by hand or created with another plugin.
+- **Works on desktop and mobile.**
 
-For a better cover, run **Fetch or replace cover for current note**: it
-collects candidates from Google and Apple and shows them side by side, each
-labeled with title, author, year and source API. It reads the note's
-frontmatter `title` (file name if missing) and `author`/`authors` (plain text
-or `[[wikilinks]]`); the chosen cover is written into the configured cover
-property. Also handy for backfilling notes made with another plugin.
+## Adding a new book
 
-## Setup
+1. Click the book ribbon icon or run the **New book note** command.
+2. Type a title, an author, or both. Results appear live. You can also paste an ISBN to jump straight to one exact edition.
+3. Pick the edition you mean. The note is created from your template in your note folder and opens right away.
 
-1. Optional but recommended: get a free **Google Books API key**. Google Cloud
-   console → create a project → enable the *Books API* → create an API key. No
-   billing required (1,000 requests/day). Without a key, search uses Open
-   Library instead, with leaner metadata.
-2. Paste it into the plugin settings.
-3. Set your default store (default `DE`), cover storage mode, and optionally a
-   template file.
+A few nice touches along the way: the store region and the cover storage mode can be switched right in the search modal for that one search, and if a note for the book already exists you are asked first instead of ending up with a surprise duplicate.
 
-## Cover storage
+## Giving an existing note a better cover
 
-- **Link URL** (default): the remote cover URL is written to the note.
-  Lightest; needs internet to render.
-- **Download into the vault**: the hi-res image is saved into your vault and
-  referenced locally. Portable and offline; ~140 KB per cover at 800×800.
+Already have a library? Open any book note and run **Fetch or replace cover for current note**.
 
-Both modals let you override the mode per search.
+![Replacing the cover of an existing note](docs/assets/fetch-cover.gif)
 
-## Note template
+The plugin reads the note's `title` and `author` (from frontmatter, or the file name if there is none) and shows cover candidates from Google Books and Apple side by side. Each card tells you the title, author, year, source, and the actual pixel size it delivers, so you can pick the sharpest one at a glance. Found a better image somewhere else? Paste its URL into the field at the bottom and use that instead.
 
-The **Note template** in the settings comes pre-filled with a sensible default.
-Tweak it right there (or don't, it works as-is). Power users can instead point
-**Template file** at a regular note in the vault (with autocompletion, like
-Templater's templates). It then overrides the inline template, and the button
-next to the setting creates such a file from your current inline template so
-nothing is lost when switching. If a configured file goes missing, note
-creation falls back to the inline template and tells you.
+The chosen cover is written into the note's cover property (configurable), as a link or as a downloaded file, your choice. This works just as well for notes created by other plugins, which makes it a friendly way to upgrade a whole existing library one note at a time.
 
-Use `{{var}}` placeholders in the template (frontmatter + body):
+## Storing covers: link or download
 
-`title`, `subtitle`, `author`, `authors`, `authorsYamlLinks` (YAML list of
-`[[wikilinks]]`), `description`, `descriptionCallout` (the description as a
-collapsed `> [!summary]-` callout; empty when there is no description; custom
-callout title via `{{descriptionCallout:My title}}`),
-`publisher`, `publishedDate`, `year`, `pageCount`, `isbn`, `isbn13`, `isbn10`,
-`categories`, `categoriesYamlList`, `language`, `seriesName`, `seriesNumber`,
-`source`, `cover`, `date` (note creation date, `YYYY-MM-DD`), `datetime`
-(`YYYY-MM-DD HH:mm:ss`).
+- **Link (default).** The remote image URL is written into the note. Nothing is added to your vault, but rendering needs an internet connection.
+- **Download into the vault.** The image is saved into a folder you choose and referenced locally. Portable, offline, and future-proof; roughly 140 KB per cover at 800x800.
 
-Reading status, rating, dates, tags, etc. are **not** built in by design; add
-them to your own template file.
+You set a default in the settings and can override it per search in both modals.
 
-> **YAML note:** substitution is literal. The default template double-quotes
-> scalar frontmatter values; keep free-form text like `{{description}}` in the
-> note body, not in frontmatter.
+## Making the notes your own
 
-## Network use & privacy
+The built-in **Note template** works out of the box and is editable right in the settings. If you prefer managing templates as notes, point **Template file** at any note in your vault instead; a button next to the setting turns your current inline template into such a file so nothing is lost when you switch.
 
-This plugin makes requests to `googleapis.com` (with your API key),
-`itunes.apple.com`, and `openlibrary.org` to fetch book data and covers. Your
-API key is stored locally in the plugin's `data.json` and is never sent anywhere
-except Google. No telemetry.
+Templates use simple `{{variable}}` placeholders in the frontmatter and body. Even the file name is a template (default: `{{title}} - {{authors}}`).
+
+<details>
+<summary>All template variables</summary>
+
+| Variable | What you get |
+| --- | --- |
+| `{{title}}` | Book title |
+| `{{subtitle}}` | Subtitle, if any |
+| `{{author}}` | First author |
+| `{{authors}}` | All authors, comma-separated |
+| `{{authorsYamlLinks}}` | Authors as a YAML list of `[[wikilinks]]` |
+| `{{description}}` | Publisher's description (body only, too long for frontmatter) |
+| `{{descriptionCallout}}` | Description as a collapsed callout; custom title via `{{descriptionCallout:My title}}` |
+| `{{publisher}}` | Publisher name |
+| `{{publishedDate}}` | Raw publish date, e.g. 2021-05-04 |
+| `{{year}}` | 4-digit publish year |
+| `{{pageCount}}` | Number of pages |
+| `{{isbn}}` | ISBN-13, falling back to ISBN-10 |
+| `{{isbn13}}` | ISBN-13 only |
+| `{{isbn10}}` | ISBN-10 only |
+| `{{categories}}` | Categories, comma-separated |
+| `{{categoriesYamlList}}` | Categories as a YAML list |
+| `{{language}}` | Language code, e.g. `en`, `de` |
+| `{{seriesName}}` | Series name, if known |
+| `{{seriesNumber}}` | Number within the series, if known |
+| `{{source}}` | Search provider: `google` or `openlibrary` |
+| `{{cover}}` | Cover URL or vault path, per the cover storage mode |
+| `{{date}}` | Note creation date, YYYY-MM-DD |
+| `{{datetime}}` | Note creation date and time, YYYY-MM-DD HH:mm:ss |
+
+</details>
+
+Reading status, rating, dates read, tags, and similar fields are deliberately not built in. Add the properties you care about to your template and they will be part of every new book note.
+
+> **A note on YAML:** substitution is literal. The default template double-quotes scalar frontmatter values; keep free-form text like `{{description}}` in the note body rather than in frontmatter.
+
+### Plays well with Templater
+
+If you use the excellent [Templater](https://github.com/SilentVoid13/Templater) (tip of the hat, it is a fantastic plugin), the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
+
+## Getting started
+
+1. Install **Book Search & Covers** from Obsidian's Community plugins and enable it.
+2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, search uses Open Library, which works fine but returns leaner metadata.
+3. Have a look at the settings: pick your note folder, your store region, and how covers should be stored. The defaults are sensible, so feel free to just start searching.
+
+## Network use and privacy
+
+The plugin talks to `googleapis.com` (with your API key), `itunes.apple.com`, and `openlibrary.org` to fetch book data and covers. Your API key is stored locally in the plugin's `data.json` and is never sent anywhere except Google. No telemetry, no tracking.
+
+## Thanks
+
+- [Templater](https://github.com/SilentVoid13/Templater), the gold standard for templating in Obsidian.
+- [Book Search](https://github.com/anpigon/obsidian-book-search-plugin), the plugin that planted the idea. If you want a different take on book notes, give it a look.
+- Book data comes from Google Books and Open Library, covers from Google Books and Apple's iTunes Search API.
 
 ## Development
 
 ```bash
 npm install
-npm run dev     # watch build → main.js
+npm run dev     # watch build -> main.js
 npm run build   # typecheck + production build
 npm run lint    # eslint-plugin-obsidianmd
+npm test        # vitest
 ```
 
 Built with the standard Obsidian + esbuild toolchain.
