@@ -13,6 +13,7 @@ export function requestUrl(): never {
 	throw new Error("requestUrl is not available in unit tests");
 }
 
+export const Platform = { isMobile: false };
 export class TFile {}
 export class TFolder {}
 export class App {}

@@ -4,7 +4,15 @@
 // cover-storage mode from settings are only defaults — both can be overridden
 // here for this search.
 
-import { App, debounce, DropdownComponent, Modal, setIcon, setTooltip } from "obsidian";
+import {
+	App,
+	debounce,
+	DropdownComponent,
+	Modal,
+	Platform,
+	setIcon,
+	setTooltip,
+} from "obsidian";
 import { type BookResult, yearOf } from "../model";
 import { searchBooks } from "../search";
 import { type BookSearchCoverSettings, type CoverMode, STORES } from "../settings";
@@ -250,11 +258,15 @@ export function addOptionsRow(
 		.onChange((v) => opts.onCoverMode(v as CoverMode));
 }
 
-/** Render the `kbd · label` hint group used in both modal footers. */
+/**
+ * Render the `kbd · label` hint group used in both modal footers. Skipped on
+ * mobile, where there is no keyboard to hint at.
+ */
 export function addKeyHints(
 	parent: HTMLElement,
 	hints: ReadonlyArray<readonly [key: string, label: string]>,
 ): void {
+	if (Platform.isMobile) return;
 	const el = parent.createDiv({ cls: "bsc-key-hints" });
 	for (const [key, label] of hints) {
 		const hint = el.createSpan({ cls: "bsc-key-hint" });

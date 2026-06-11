@@ -1,6 +1,8 @@
 /* ── Shared modal layout (search modal + cover picker) ─────────────────── */
-/* Both modals sized like Obsidian's own search prompts (quick switcher). */
-.bsc-modal {
+/* Both modals sized like Obsidian's own search prompts (quick switcher).
+   Desktop only: on mobile, modals are near-fullscreen sheets and keep their
+   native width. */
+body:not(.is-mobile) .bsc-modal {
 	width: min(var(--prompt-width), var(--dialog-max-width));
 }
 .bsc-query-input {
@@ -63,6 +65,15 @@
 }
 
 /* ── Search result rows ────────────────────────────────────────────────── */
+/* Mobile gives <button> a filled background and a large radius; flatten the
+   result rows and cover cards back into plain list items. (Placed before the
+   hover/selected rules so those still win on equal specificity.) */
+body.is-mobile .bsc-result-row,
+body.is-mobile .bsc-cover-card {
+	background: transparent;
+	border-radius: var(--radius-s);
+	box-shadow: none;
+}
 .bsc-results {
 	display: flex;
 	flex-direction: column;
@@ -213,6 +224,15 @@
 	gap: 0.75em;
 	max-height: 60vh;
 	overflow-y: auto;
+}
+/* Phone-sized covers: three columns instead of two oversized ones. */
+body.is-mobile .bsc-cover-grid {
+	grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+	gap: 0.5em;
+}
+body.is-mobile .bsc-cover-card-img {
+	width: 88px;
+	height: 132px;
 }
 .bsc-cover-card {
 	display: flex;
