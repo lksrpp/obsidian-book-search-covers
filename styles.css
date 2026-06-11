@@ -309,6 +309,19 @@ body.is-mobile .bsc-cover-card-img {
 	color: var(--text-faint);
 }
 
+/* Custom-URL row under the cover grid. */
+.bsc-url-row {
+	display: flex;
+	gap: 0.5em;
+	margin-top: 0.5em;
+}
+.bsc-url-input {
+	flex: 1;
+	min-width: 0;
+	font-size: 16px; /* prevents iOS focus-zoom */
+	padding: 0.4em;
+}
+
 /* ── Duplicate dialog ──────────────────────────────────────────────────── */
 .bsc-dialog-buttons {
 	display: flex;

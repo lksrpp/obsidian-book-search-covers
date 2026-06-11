@@ -21,7 +21,8 @@ import type { BookSearchCoverSettings } from "./settings";
 export interface CoverCandidate {
 	/** Remote https URL of the cover image. */
 	url: string;
-	source: "google" | "apple";
+	/** "custom" = a URL the user pasted into the picker themselves. */
+	source: "google" | "apple" | "custom";
 	/** Caption lines shown under the image in the picker. */
 	title: string;
 	author?: string;

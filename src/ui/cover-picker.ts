@@ -3,14 +3,16 @@
 // eye. Shares the options row (store + cover-storage override) and footer
 // layout with the search modal — changing the store re-queries both sources.
 
-import { App, Modal } from "obsidian";
+import { App, ButtonComponent, Modal, Notice } from "obsidian";
 import type { CoverCandidate } from "../cover";
 import type { BookSearchCoverSettings, CoverMode } from "../settings";
 import { addKeyHints, addOptionsRow } from "./search-modal";
 
+// Card captions only; custom URLs never render as cards.
 const SOURCE_NAMES: Record<CoverCandidate["source"], string> = {
 	google: "Google",
 	apple: "Apple",
+	custom: "Custom",
 };
 
 export class CoverPickerModal extends Modal {
@@ -41,6 +43,27 @@ export class CoverPickerModal extends Modal {
 		this.statusEl = this.contentEl.createDiv({ cls: "bsc-status" });
 		this.gridEl = this.contentEl.createDiv({ cls: "bsc-cover-grid" });
 
+		// Escape hatch for when both APIs miss the right cover.
+		const urlRow = this.contentEl.createDiv({ cls: "bsc-url-row" });
+		const urlInput = urlRow.createEl("input", {
+			type: "text",
+			cls: "bsc-url-input",
+			attr: { placeholder: "Or paste an image URL…" },
+		});
+		urlInput.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				this.useCustomUrl(urlInput.value);
+			}
+		});
+		new ButtonComponent(urlRow)
+			.setButtonText("Use")
+			.onClick(() => this.useCustomUrl(urlInput.value));
+		// The modal auto-focuses the first focusable element, which is this
+		// input while the grid is still loading — but it is the escape hatch,
+		// not the primary action. Arrow-key navigation works without focus.
+		window.setTimeout(() => urlInput.blur(), 0);
+
 		const footer = this.contentEl.createDiv({ cls: "bsc-modal-footer" });
 		addOptionsRow(footer, {
 			country: this.country,
@@ -64,6 +87,8 @@ export class CoverPickerModal extends Modal {
 		this.scope.register([], "ArrowDown", (e) => this.move(e, this.columns()));
 		this.scope.register([], "ArrowUp", (e) => this.move(e, -this.columns()));
 		this.scope.register([], "Enter", (e) => {
+			// The URL input handles its own Enter.
+			if (e.target instanceof HTMLInputElement) return;
 			if (this.selected < 0) return;
 			e.preventDefault();
 			this.pickAt(this.selected);
@@ -133,6 +158,8 @@ export class CoverPickerModal extends Modal {
 	}
 
 	private move(e: KeyboardEvent, delta: number): void {
+		// Leave the caret keys alone while typing in the URL input.
+		if (e.target instanceof HTMLInputElement) return;
 		if (this.candidates.length === 0) return;
 		e.preventDefault();
 		const next =
@@ -156,5 +183,15 @@ export class CoverPickerModal extends Modal {
 		if (!candidate) return;
 		this.close();
 		this.onPick(candidate, this.coverMode);
+	}
+
+	private useCustomUrl(raw: string): void {
+		const url = raw.trim();
+		if (!/^https?:\/\//i.test(url)) {
+			new Notice("Enter an http(s) image URL.");
+			return;
+		}
+		this.close();
+		this.onPick({ url, source: "custom", title: this.noteTitle }, this.coverMode);
 	}
 }

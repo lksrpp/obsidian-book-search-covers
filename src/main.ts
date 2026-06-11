@@ -193,9 +193,15 @@ export default class BookSearchCoverPlugin extends Plugin {
 				if (foundIsbn && !front.isbn) front.isbn = foundIsbn;
 			},
 		);
-		new Notice(`Cover set from ${candidate.source === "apple" ? "Apple" : "Google"}.`);
+		new Notice(`Cover set from ${SOURCE_LABELS[candidate.source]}.`);
 	}
 }
+
+const SOURCE_LABELS: Record<CoverCandidate["source"], string> = {
+	google: "Google",
+	apple: "Apple",
+	custom: "the custom URL",
+};
 
 /** Pull a single author string from frontmatter (`author` or `authors`). */
 function pickAuthor(fm: Record<string, unknown>): string {
