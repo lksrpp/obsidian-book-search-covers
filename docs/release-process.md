@@ -70,8 +70,6 @@ requests against `obsidianmd/obsidian-releases`:
 
 Before submitting, re-check the [plugin guidelines] and [developer policies],
 and run `npm run lint` (eslint-plugin-obsidianmd covers most review points).
-Also remember: drop the "installed privately via BRAT" line from the README
-and reconsider the `DE` default store for a general audience.
 
 ## Sources
 
