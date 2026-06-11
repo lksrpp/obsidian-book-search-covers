@@ -39,7 +39,7 @@ cover: "{{cover}}"
 tags: [book]
 ---
 
-![cover]({{cover}})
+![cover|250]({{cover}})
 
 # {{title}}
 
