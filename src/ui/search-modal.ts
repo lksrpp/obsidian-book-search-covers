@@ -16,6 +16,7 @@ import {
 import { type BookResult, yearOf } from "../model";
 import { searchBooks } from "../search";
 import { type BookSearchCoverSettings, type CoverMode, STORES } from "../settings";
+import { trackKeyboardViewport } from "./mobile-viewport";
 
 /** Per-invocation choices made in a modal, overriding the settings defaults. */
 export interface SearchOverrides {
@@ -35,6 +36,7 @@ export class BookSearchModal extends Modal {
 	private picking = false;
 	private inputEl!: HTMLInputElement;
 	private resultsEl!: HTMLElement;
+	private disposeViewport: () => void = () => {};
 
 	constructor(
 		app: App,
@@ -97,10 +99,12 @@ export class BookSearchModal extends Modal {
 			}
 		});
 		window.setTimeout(() => this.inputEl.focus(), 0);
+		this.disposeViewport = trackKeyboardViewport(this.modalEl);
 	}
 
 	onClose(): void {
 		this.generation++; // discard any in-flight search
+		this.disposeViewport();
 		this.contentEl.empty();
 	}
 
