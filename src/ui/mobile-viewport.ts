@@ -16,8 +16,9 @@
 
 import { type Modal, Platform } from "obsidian";
 
-/** The window keyboard events Capacitor dispatches carry the height directly. */
-type KeyboardEvent = Event & {
+/** The window keyboard events Capacitor dispatches carry the height directly.
+ * Named to avoid shadowing the global DOM `KeyboardEvent` (a keydown event). */
+type CapacitorKeyboardEvent = Event & {
 	keyboardHeight?: number;
 	detail?: { keyboardHeight?: number };
 };
@@ -38,7 +39,7 @@ export function trackKeyboardViewport(modal: Modal): () => void {
 	const setKeyboardHeight = (px: number): void => {
 		containerEl.style.setProperty("--bsc-kb-height", `${Math.max(0, px)}px`);
 	};
-	const onShow = (e: KeyboardEvent): void => {
+	const onShow = (e: CapacitorKeyboardEvent): void => {
 		setKeyboardHeight(e.keyboardHeight ?? e.detail?.keyboardHeight ?? 0);
 	};
 	const onHide = (): void => setKeyboardHeight(0);
@@ -51,26 +52,35 @@ export function trackKeyboardViewport(modal: Modal): () => void {
 	window.addEventListener("keyboardWillHide", onHide);
 	window.addEventListener("keyboardDidHide", onHide);
 
-	// Scroll-to-dismiss: when the user scrolls the results / cover grid, drop
-	// focus so the keyboard slides away (which fires keyboardWillHide above,
+	// Scroll-to-dismiss: when the user drags to scroll the results / cover grid,
+	// drop focus so the keyboard slides away (which fires keyboardWillHide above,
 	// resetting --bsc-kb-height to 0 and growing the modal to fill the freed
-	// space). Matches the native iOS pattern (Messages, Safari, Mail). passive,
-	// so the handler never blocks the scroll.
+	// space). Matches the native iOS pattern (Messages, Safari, Mail).
+	//
+	// We listen to `touchmove`, not `scroll`, on purpose: both modals call
+	// scrollIntoView() during arrow-key/pointer selection, which fires a `scroll`
+	// event that would dismiss the keyboard the user is still typing into.
+	// touchmove only fires on an actual finger drag. passive, so it never blocks.
 	const scrollEl = modal.contentEl.querySelector<HTMLElement>(
 		".bsc-results, .bsc-cover-grid",
 	);
-	const onScroll = (): void => {
+	const dismissKeyboard = (): void => {
 		const active = activeDocument.activeElement;
-		if (active instanceof HTMLElement) active.blur();
+		// Only blur a genuinely focused field. Once the keyboard is down
+		// activeElement falls back to <body>, and touchmove fires continuously
+		// during a drag — guard so we don't call blur() on body every frame.
+		if (active instanceof HTMLElement && active !== activeDocument.body) {
+			active.blur();
+		}
 	};
-	scrollEl?.addEventListener("scroll", onScroll, { passive: true });
+	scrollEl?.addEventListener("touchmove", dismissKeyboard, { passive: true });
 
 	return () => {
 		window.removeEventListener("keyboardWillShow", onShow);
 		window.removeEventListener("keyboardDidShow", onShow);
 		window.removeEventListener("keyboardWillHide", onHide);
 		window.removeEventListener("keyboardDidHide", onHide);
-		scrollEl?.removeEventListener("scroll", onScroll);
+		scrollEl?.removeEventListener("touchmove", dismissKeyboard);
 		containerEl.removeClass("bsc-anchor-top");
 		containerEl.style.removeProperty("--bsc-kb-height");
 	};

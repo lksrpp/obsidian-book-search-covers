@@ -23,10 +23,14 @@ body.is-mobile .bsc-modal {
 	display: flex;
 	flex-direction: column;
 	/* 100vh is the full webview height (iOS keeps it full behind the keyboard);
-	   subtract the keyboard and the top safe area so the modal ends exactly at
-	   the top of the keyboard. */
+	   subtract the top safe area and the keyboard so the modal ends exactly at
+	   the top of the keyboard. With no keyboard, max() falls back to the bottom
+	   safe area so the footer clears the home indicator instead of sitting under
+	   it; with the keyboard up its height dominates (it already covers the home
+	   indicator), so the two never double-count. */
 	max-height: calc(
-		100vh - var(--bsc-kb-height, 0px) - env(safe-area-inset-top, 0px)
+		100vh - env(safe-area-inset-top, 0px) -
+			max(var(--bsc-kb-height, 0px), env(safe-area-inset-bottom, 0px))
 	);
 }
 body.is-mobile .bsc-modal .modal-content {
