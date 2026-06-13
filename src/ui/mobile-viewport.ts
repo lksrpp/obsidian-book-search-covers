@@ -8,26 +8,25 @@
 // so it anchors to the top instead of staying centered behind the keyboard.
 // Desktop and any webview without visualViewport are left untouched.
 
-import { Platform } from "obsidian";
+import { type Modal, Platform } from "obsidian";
 
 /** Call from a Modal's onOpen; returns a teardown to call from onClose. */
-export function trackKeyboardViewport(modalEl: HTMLElement): () => void {
+export function trackKeyboardViewport(modal: Modal): () => void {
 	const vv = window.visualViewport;
 	// Desktop, or a webview without the API: native centering and the vh-based
 	// caps are already correct, so do nothing and hand back a no-op disposer.
 	if (!Platform.isMobile || !vv) return () => {};
 
-	// Flag this modal's own .modal-container, not the body: the duplicate
-	// dialog stacks on top of the still-open search modal, and a global flag
-	// would top-anchor that (and any other plugin's) modal too.
-	const container = modalEl.closest(".modal-container");
-	container?.addClass("bsc-anchor-top");
+	// Flag this modal's own container, not the body: the duplicate dialog
+	// stacks on top of the still-open search modal, and a global flag would
+	// top-anchor that (and any other plugin's) modal too.
+	modal.containerEl.addClass("bsc-anchor-top");
 	const apply = (): void => {
 		// Height available above the keyboard. offsetTop is normally 0 (Obsidian
 		// locks page scroll under the modal); subtract it defensively so a
 		// non-zero offset never lets the modal grow back under the keyboard.
 		const height = Math.max(0, vv.height - vv.offsetTop);
-		modalEl.style.setProperty("--bsc-vv-height", `${height}px`);
+		modal.modalEl.style.setProperty("--bsc-vv-height", `${height}px`);
 	};
 	apply();
 	// resize fires on keyboard show/hide and on rotation; scroll fires when the
@@ -38,7 +37,7 @@ export function trackKeyboardViewport(modalEl: HTMLElement): () => void {
 	return () => {
 		vv.removeEventListener("resize", apply);
 		vv.removeEventListener("scroll", apply);
-		container?.removeClass("bsc-anchor-top");
-		modalEl.style.removeProperty("--bsc-vv-height");
+		modal.containerEl.removeClass("bsc-anchor-top");
+		modal.modalEl.style.removeProperty("--bsc-vv-height");
 	};
 }

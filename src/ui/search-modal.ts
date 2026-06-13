@@ -99,7 +99,7 @@ export class BookSearchModal extends Modal {
 			}
 		});
 		window.setTimeout(() => this.inputEl.focus(), 0);
-		this.disposeViewport = trackKeyboardViewport(this.modalEl);
+		this.disposeViewport = trackKeyboardViewport(this);
 	}
 
 	onClose(): void {

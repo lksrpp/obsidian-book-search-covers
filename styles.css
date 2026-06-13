@@ -27,7 +27,11 @@ body.is-mobile .bsc-modal .modal-content {
 	flex-direction: column;
 	flex: 1 1 auto;
 	min-height: 0;
-	overflow: hidden; /* the inner scroll areas own the scrolling */
+	/* Normally the inner scroll areas own the scrolling; auto (not hidden) is
+	   the safety net for landscape phones, where title + input + footer alone
+	   can exceed the space above the keyboard — hidden would clip the footer
+	   with no way to reach it. */
+	overflow-y: auto;
 }
 /* Scroll areas flex to fill and shrink instead of reserving a fixed vh behind
    the keyboard. min-height:0 is required or the flex item won't shrink. */

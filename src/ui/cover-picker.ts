@@ -97,7 +97,7 @@ export class CoverPickerModal extends Modal {
 		});
 
 		void this.load();
-		this.disposeViewport = trackKeyboardViewport(this.modalEl);
+		this.disposeViewport = trackKeyboardViewport(this);
 	}
 
 	onClose(): void {
