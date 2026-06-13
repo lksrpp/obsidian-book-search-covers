@@ -6,6 +6,7 @@
 import { App, ButtonComponent, Modal, Notice } from "obsidian";
 import type { CoverCandidate } from "../cover";
 import type { BookSearchCoverSettings, CoverMode } from "../settings";
+import { trackKeyboardViewport } from "./mobile-viewport";
 import { addKeyHints, addOptionsRow } from "./search-modal";
 
 // Card captions only; custom URLs never render as cards.
@@ -23,6 +24,7 @@ export class CoverPickerModal extends Modal {
 	private selected = -1;
 	private statusEl!: HTMLElement;
 	private gridEl!: HTMLElement;
+	private disposeViewport: () => void = () => {};
 
 	constructor(
 		app: App,
@@ -95,10 +97,12 @@ export class CoverPickerModal extends Modal {
 		});
 
 		void this.load();
+		this.disposeViewport = trackKeyboardViewport(this);
 	}
 
 	onClose(): void {
 		this.generation++; // discard any in-flight fetch
+		this.disposeViewport();
 		this.contentEl.empty();
 	}
 

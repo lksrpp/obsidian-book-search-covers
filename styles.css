@@ -5,6 +5,50 @@
 body:not(.is-mobile) .bsc-modal {
 	width: min(var(--prompt-width), var(--dialog-max-width));
 }
+
+/* iOS keyboard fix. On iOS WKWebView the soft keyboard overlays the page rather
+   than shrinking the viewport, so a vertically centered modal has its lower half
+   (footer dropdowns + results) hidden behind the keyboard. Anchor the modal to
+   the top and cap its height to the space above the keyboard (--bsc-vv-height,
+   set from visualViewport in mobile-viewport.ts), then flex the inner scroll
+   areas so they shrink and the footer stays on-screen. */
+body.is-mobile .modal-container.bsc-anchor-top {
+	align-items: flex-start;
+	padding-top: env(safe-area-inset-top, 0px);
+}
+body.is-mobile .bsc-modal {
+	display: flex;
+	flex-direction: column;
+	/* vh fallback covers first paint, before JS writes the measured height. */
+	max-height: var(--bsc-vv-height, 100vh);
+}
+body.is-mobile .bsc-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	/* Normally the inner scroll areas own the scrolling; auto (not hidden) is
+	   the safety net for landscape phones, where title + input + footer alone
+	   can exceed the space above the keyboard — hidden would clip the footer
+	   with no way to reach it. */
+	overflow-y: auto;
+}
+/* Scroll areas flex to fill and shrink instead of reserving a fixed vh behind
+   the keyboard. min-height:0 is required or the flex item won't shrink. */
+body.is-mobile .bsc-results,
+body.is-mobile .bsc-cover-grid {
+	flex: 1 1 auto;
+	min-height: 0;
+	max-height: none;
+}
+/* Everything that isn't the scroll area keeps its size, so only the results
+   shrink and the footer dropdowns the user must reach stay above the keyboard. */
+body.is-mobile .bsc-query-input,
+body.is-mobile .bsc-status,
+body.is-mobile .bsc-url-row,
+body.is-mobile .bsc-modal-footer {
+	flex: 0 0 auto;
+}
 .bsc-query-input {
 	width: 100%;
 	font-size: 16px; /* prevents iOS focus-zoom */
