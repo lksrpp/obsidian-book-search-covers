@@ -92,7 +92,13 @@ export class BookSearchModal extends Modal {
 				e.preventDefault();
 				debounced.cancel();
 				if (this.selected >= 0) void this.pick(this.results[this.selected]);
-				else void this.runSearch();
+				else {
+					void this.runSearch();
+					// On mobile, "Search" on the keyboard means "I'm done typing":
+					// drop focus so the keyboard closes and the results get the
+					// full screen. (Desktop keeps focus for quick query edits.)
+					if (Platform.isMobile) this.inputEl.blur();
+				}
 			} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
 				e.preventDefault();
 				this.moveSelection(e.key === "ArrowDown" ? 1 : -1);

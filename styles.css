@@ -9,9 +9,12 @@ body:not(.is-mobile) .bsc-modal {
 /* iOS keyboard fix. On iOS WKWebView the soft keyboard overlays the page rather
    than shrinking the viewport, so a vertically centered modal has its lower half
    (footer dropdowns + results) hidden behind the keyboard. Anchor the modal to
-   the top and cap its height to the space above the keyboard (--bsc-vv-height,
-   set from visualViewport in mobile-viewport.ts), then flex the inner scroll
-   areas so they shrink and the footer stays on-screen. */
+   the top and cap its height to the space above the keyboard, then flex the
+   inner scroll areas so they shrink and the footer stays on-screen.
+   --bsc-kb-height is the keyboard's height, set from the Capacitor keyboard
+   events in mobile-viewport.ts; it defaults to 0 (no keyboard) so the modal is
+   full-height until one appears. visualViewport is not used: on iOS it does not
+   report the overlaying keyboard. */
 body.is-mobile .modal-container.bsc-anchor-top {
 	align-items: flex-start;
 	padding-top: env(safe-area-inset-top, 0px);
@@ -19,8 +22,12 @@ body.is-mobile .modal-container.bsc-anchor-top {
 body.is-mobile .bsc-modal {
 	display: flex;
 	flex-direction: column;
-	/* vh fallback covers first paint, before JS writes the measured height. */
-	max-height: var(--bsc-vv-height, 100vh);
+	/* 100vh is the full webview height (iOS keeps it full behind the keyboard);
+	   subtract the keyboard and the top safe area so the modal ends exactly at
+	   the top of the keyboard. */
+	max-height: calc(
+		100vh - var(--bsc-kb-height, 0px) - env(safe-area-inset-top, 0px)
+	);
 }
 body.is-mobile .bsc-modal .modal-content {
 	display: flex;
