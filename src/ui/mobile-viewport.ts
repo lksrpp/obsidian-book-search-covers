@@ -4,9 +4,9 @@
 // the keyboard ends up covering the modal's lower half (footer dropdowns and
 // part of the results). The visualViewport API is the only signal that reflects
 // the space *above* the keyboard; we write its height into a CSS variable the
-// mobile stylesheet uses to cap the modal, and flag the body so the modal
-// anchors to the top instead of staying centered behind the keyboard. Desktop
-// and any webview without visualViewport are left untouched.
+// mobile stylesheet uses to cap the modal, and flag the modal's own container
+// so it anchors to the top instead of staying centered behind the keyboard.
+// Desktop and any webview without visualViewport are left untouched.
 
 import { Platform } from "obsidian";
 
@@ -17,10 +17,11 @@ export function trackKeyboardViewport(modalEl: HTMLElement): () => void {
 	// caps are already correct, so do nothing and hand back a no-op disposer.
 	if (!Platform.isMobile || !vv) return () => {};
 
-	// The modal's own document (not the global one), so the body flag and the
-	// modal element always live in the same document, popout windows included.
-	const body = modalEl.ownerDocument.body;
-	body.addClass("bsc-mobile-modal-open");
+	// Flag this modal's own .modal-container, not the body: the duplicate
+	// dialog stacks on top of the still-open search modal, and a global flag
+	// would top-anchor that (and any other plugin's) modal too.
+	const container = modalEl.closest(".modal-container");
+	container?.addClass("bsc-anchor-top");
 	const apply = (): void => {
 		// Height available above the keyboard. offsetTop is normally 0 (Obsidian
 		// locks page scroll under the modal); subtract it defensively so a
@@ -37,7 +38,7 @@ export function trackKeyboardViewport(modalEl: HTMLElement): () => void {
 	return () => {
 		vv.removeEventListener("resize", apply);
 		vv.removeEventListener("scroll", apply);
-		body.removeClass("bsc-mobile-modal-open");
+		container?.removeClass("bsc-anchor-top");
 		modalEl.style.removeProperty("--bsc-vv-height");
 	};
 }

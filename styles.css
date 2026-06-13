@@ -12,15 +12,15 @@ body:not(.is-mobile) .bsc-modal {
    the top and cap its height to the space above the keyboard (--bsc-vv-height,
    set from visualViewport in mobile-viewport.ts), then flex the inner scroll
    areas so they shrink and the footer stays on-screen. */
-body.is-mobile.bsc-mobile-modal-open .modal-container {
+body.is-mobile .modal-container.bsc-anchor-top {
 	align-items: flex-start;
 	padding-top: env(safe-area-inset-top, 0px);
 }
 body.is-mobile .bsc-modal {
 	display: flex;
 	flex-direction: column;
-	/* dvh fallback covers first paint, before JS writes the measured height. */
-	max-height: var(--bsc-vv-height, 100dvh);
+	/* vh fallback covers first paint, before JS writes the measured height. */
+	max-height: var(--bsc-vv-height, 100vh);
 }
 body.is-mobile .bsc-modal .modal-content {
 	display: flex;
