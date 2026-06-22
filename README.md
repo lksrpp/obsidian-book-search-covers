@@ -2,9 +2,9 @@
 
 An Obsidian plugin for everyone who keeps their book library in their vault. Search books as you type, pick the exact edition you mean, and get a finished book note from your own customized template, complete with a high resolution cover.
 
-Covers are the heart of this plugin. Sharp images make a book library feel like a bookshelf, especially in gallery views (for example with [Obsidian Bases](https://obsidian.md/help/bases)). New notes get their cover straight from the search provider in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
+Covers are the heart of this plugin. Sharp images bring joy to a digital book library, especially in gallery views (for example with [Obsidian Bases](https://obsidian.md/help/bases)). New notes get their cover in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
 
-## What it does (at a glance)
+## What the plugin brings to your vault
 
 - **Live search.** Results appear while you type, with cover, title, author, year, and description. No multi-step dialogs that open and close; just type, see, pick.
 - **High resolution covers.** Go with 800x800 pixels or beyond, instead of the small thumbnails most book plugins settle for.
@@ -21,32 +21,32 @@ Find a new book and add it to your Obsidian library.
 
 1. Click the book ribbon icon or run the **New book note** command.
 2. Type a title, an author, or both. Results appear live. You can also paste an ISBN to jump straight to one exact edition.
-3. Pick the edition you mean. The note is created from your template in your note folder and opens right away.
+3. Pick the edition you want. The note is created from your template in your note folder and opens right away.
 
-A few nice touches along the way: If a note for the book already exists you are asked first instead of ending up with a surprise duplicate. The store region and the cover storage mode defaults are defined in settings. They can be switched right in the search modal for that one search.
+A few nice touches along the way: If a note for the book already exists you are asked first instead of ending up with a duplicate. The store region and the cover storage mode defaults are defined in settings. They can be switched right in the search modal for that one search.
 
-## Giving an existing note a better cover
+## Giving a better cover to an existing note 
 
 Already have a library? Open any book note and run **Fetch or replace cover for current note**.
 
 ![Replacing the cover of an existing note](docs/assets/fetch-cover.gif)
 
-The plugin reads the note's `title` and `author` (from frontmatter, or the file name if there is none) and shows cover candidates from Google Books and Apple side by side. Each card tells you the title, author, year, source, and the actual pixel size it delivers, so you can pick the sharpest one at a glance. Found a better image somewhere else? Paste its URL into the field at the bottom and use that instead.
+The plugin reads the note's `title` and `author` (from frontmatter, or the file name if there is none) and shows cover candidates from Google Books and Apple side by side. Each card tells you the title, author, year, source, and the actual pixel size it delivers, so you can pick the best one at a glance. Found a better image somewhere else? Paste its URL into the field at the bottom and use that instead.
 
-The chosen cover is written into the note's cover property (configurable), as a link or as a downloaded file, your choice. This works just as well for notes created by other plugins, which makes it a friendly way to upgrade a whole existing library one note at a time.
+The chosen cover is written into the note's cover property (configurable), as a link or as a downloaded file, your choice. This works just as well for notes created by other plugins, which makes it a friendly way to upgrade an existing library one note at a time.
 
 ## Storing covers: link or download
 
 - **Link (default).** The remote image URL is written into the note. Nothing is added to your vault, but rendering needs an internet connection.
-- **Download into the vault.** The image is saved into a folder you choose and referenced locally. Portable, offline, and future-proof; roughly 140 KB per cover at 800x800.
+- **Download into the vault.** The image is saved into a folder you choose and referenced locally. Portable, offline, and future-proof; expect roughly 140 KB per cover at 800x800.
 
 You set a default in the settings and can override it per search in both modals.
 
 ## Customize new book notes
 
-The built-in **Note template** works out of the box and is editable right in the settings. If you prefer managing templates as notes (e.g., leveraging the [Templater](https://github.com/SilentVoid13/Templater) plugin), point **Template file** at any note in your vault instead; a button next to the setting turns your current inline template into such a file so nothing is lost when you switch.
+The built-in **Note template** works out of the box and is editable right in the settings. If you prefer managing templates as notes (e.g., leveraging the [Templater](https://github.com/SilentVoid13/Templater) plugin), point the **Template file** setting at any note in your vault instead; a button next to the setting turns your current inline template into such a file so nothing is lost when you switch.
 
-Templates use simple `{{variable}}` placeholders in the frontmatter and body. Even the file name is a template (default: `{{title}} - {{authors}}`).
+Templates use simple `{{variable}}` placeholders in the frontmatter, body, or the title.
 
 <details>
 <summary>All template variables</summary>
@@ -86,8 +86,8 @@ If you use Templater, the two get along nicely. The template file is a regular n
 ## Getting started
 
 1. Install **Book Search + Covers** from Obsidian's Community plugins and enable it.
-2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, search uses Open Library, which works fine but with a smaller catalog and returns leaner metadata.
-3. Have a look at the settings: pick your note folder, your store region, and how covers should be stored. The defaults are sensible, so feel free to just start searching.
+2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, the search uses Open Library, which works fine but with a smaller catalog and returns less metadata.
+3. Have a look at the settings: pick your note folder, your store region, and how covers should be stored.
 
 ## Network use and privacy
 
@@ -96,8 +96,7 @@ The plugin talks to `googleapis.com` (with your API key), `itunes.apple.com`, an
 ## Thanks
 
 - [Templater](https://github.com/SilentVoid13/Templater), the gold standard for templating in Obsidian.
-- [Book Search](https://github.com/anpigon/obsidian-book-search-plugin), the plugin that planted the idea. If you want a different take on book notes, give it a look.
-- Book data comes from Google Books and Open Library, covers from Google Books and Apple's iTunes Search API.
+- [Book Search](https://github.com/anpigon/obsidian-book-search-plugin), the plugin that I was inspired by. Used it for a while, but I wanted to have a state-of-the-art UX and better book covers.
 
 ## Development
 
