@@ -1,15 +1,15 @@
 # Book Search + Covers
 
-An Obsidian plugin for everyone who keeps their book library in their vault. Search as you type, pick the exact edition you mean, and get a finished book note from your own template, complete with a high resolution cover.
+An Obsidian plugin for everyone who keeps their book library in their vault. Search books as you type, pick the exact edition you mean, and get a finished book note from your own customized template, complete with a high resolution cover.
 
-Covers are the heart of this plugin. Sharp, large images make a book library feel like a bookshelf, especially in gallery views (for example with [Obsidian Bases](https://obsidian.md/help/bases)). New notes get their cover straight from the search provider, requested in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
+Covers are the heart of this plugin. Sharp images make a book library feel like a bookshelf, especially in gallery views (for example with [Obsidian Bases](https://obsidian.md/help/bases)). New notes get their cover straight from the search provider in high resolution instead of the usual small thumbnail. The cover picker offers alternatives from both Google Books and Apple's catalog, whose artwork is often the crispest you can find.
 
 ## What it does (at a glance)
 
-- **Live search.** Results appear while you type, with cover, title, author, year, and blurb. No multi-step dialogs that open and close; just type, see, pick.
-- **High resolution covers.** Up to 800x800 pixels and beyond, instead of the small thumbnails most book plugins settle for.
-- **Your template, your note.** Notes are created from a template you control, from the frontmatter properties down to the file name.
+- **Live search.** Results appear while you type, with cover, title, author, year, and description. No multi-step dialogs that open and close; just type, see, pick.
+- **High resolution covers.** Go with 800x800 pixels or beyond, instead of the small thumbnails most book plugins settle for.
 - **Covers as links or files.** Reference the cover by URL, or download it into your vault for a fully portable, offline library.
+- **Your template, your note.** Notes are created from a template you can customize, from the frontmatter properties down to the file name.
 - **Backfill your existing library.** Give any book note a better cover, including notes you wrote by hand or created with another plugin.
 - **Works on desktop and mobile.**
 
