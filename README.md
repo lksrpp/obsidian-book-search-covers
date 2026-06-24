@@ -80,12 +80,11 @@ Templates use simple `{{variable}}` placeholders in the frontmatter, body, or th
 </details>
 
 ### Plays well with Templater
-
 If you use Templater, the two get along nicely. The template file is a regular note in your vault, so it lives comfortably next to your Templater templates, and the plugin fills its `{{variables}}` on its own without needing Templater installed. With Templater's "Trigger Templater on new file creation" enabled, your Templater commands in the template run on the new note as usual.
 
 ## Getting started
 
-1. Install **Book Search + Covers** from Obsidian's Community plugins and enable it.
+1. Install **Book Search + Covers** from [Obsidian's Community plugins](https://community.obsidian.md/plugins/book-search-covers) and enable it.
 2. Optional but recommended: add a free **Google Books API key** for the richest metadata. The [step-by-step guide](https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md) takes about 5 minutes and requires no billing. Without a key, the search uses Open Library, which works fine but with a smaller catalog and returns less metadata.
 3. Have a look at the settings: pick your note folder, your store region, and how covers should be stored.
 
