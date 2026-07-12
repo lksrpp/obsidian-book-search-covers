@@ -1,33 +1,28 @@
-// Search orchestration: Google Books first, falling back to Open Library when
-// Google returns zero results or fails. Without an API key, Google is skipped
-// and Open Library is used directly.
+// Search orchestration: the chosen store IS the provider — no fallback. A
+// Google store errors out with the real error (e.g. Google's 503s); an Open
+// Library store just searches Open Library.
 
 import type { BookResult } from "./model";
-import { searchGoogleBooks } from "./providers/google";
+import { GoogleBooksError, searchGoogleBooks } from "./providers/google";
 import { searchOpenLibrary } from "./providers/openlibrary";
-import type { BookSearchCoverSettings } from "./settings";
+import {
+	effectiveStore,
+	resolveStore,
+	type BookSearchCoverSettings,
+	type StoreId,
+} from "./settings";
 
 export async function searchBooks(
 	query: string,
 	settings: BookSearchCoverSettings,
-	country: string = settings.preferredCountry,
+	store: StoreId = effectiveStore(settings),
 ): Promise<BookResult[]> {
-	if (!settings.googleApiKey) {
+	const resolved = resolveStore(store);
+	if (resolved.provider === "openlibrary") {
 		return searchOpenLibrary(query);
 	}
-	try {
-		const results = await searchGoogleBooks(
-			query,
-			settings.googleApiKey,
-			country,
-			settings.coverSize,
-		);
-		if (results.length > 0) return results;
-	} catch (e) {
-		const fallback = await searchOpenLibrary(query);
-		if (fallback.length > 0) return fallback;
-		throw e;
+	if (!settings.googleApiKey) {
+		throw new GoogleBooksError("No Google Books API key set (see plugin settings).");
 	}
-	// Google returned a clean empty result — try Open Library before giving up.
-	return searchOpenLibrary(query);
+	return searchGoogleBooks(query, settings.googleApiKey, resolved.country, settings.coverSize);
 }

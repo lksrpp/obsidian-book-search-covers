@@ -32,15 +32,18 @@ export interface CoverCandidate {
 /**
  * Collect cover candidates for a book from Google and Apple, in parallel.
  * Each source failing (no key, offline, …) just contributes nothing — the
- * picker shows whatever was found.
+ * picker shows whatever was found. `country` is the resolved cover region
+ * (see `coverCountryFor` in settings.ts) — Apple carries no fallback logic
+ * of its own, it just searches wherever it's told.
  */
 export async function collectCoverCandidates(
 	book: { title: string; author: string },
 	settings: BookSearchCoverSettings,
+	country: string,
 ): Promise<CoverCandidate[]> {
 	const [google, apple] = await Promise.all([
-		googleCandidates(book, settings),
-		appleCandidates(book, settings),
+		googleCandidates(book, settings, country),
+		appleCandidates(book, settings, country),
 	]);
 	return dedupeByUrl([...google, ...apple]);
 }
@@ -48,13 +51,14 @@ export async function collectCoverCandidates(
 async function googleCandidates(
 	book: { title: string; author: string },
 	settings: BookSearchCoverSettings,
+	country: string,
 ): Promise<CoverCandidate[]> {
 	const query = book.author ? `${book.title} ${book.author}` : book.title;
 	try {
 		const results = await searchGoogleBooks(
 			query,
 			settings.googleApiKey,
-			settings.preferredCountry,
+			country,
 			settings.coverSize,
 		);
 		return results
@@ -74,10 +78,11 @@ async function googleCandidates(
 async function appleCandidates(
 	book: { title: string; author: string },
 	settings: BookSearchCoverSettings,
+	country: string,
 ): Promise<CoverCandidate[]> {
 	const candidates = await appleCoverSearch(
 		{ title: book.title, author: book.author },
-		settings.preferredCountry,
+		country,
 		settings.coverSize,
 	);
 	return candidates.map((c) => ({

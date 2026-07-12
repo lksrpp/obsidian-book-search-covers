@@ -5,7 +5,7 @@
 
 import { App, ButtonComponent, Modal, Notice } from "obsidian";
 import type { CoverCandidate } from "../cover";
-import type { BookSearchCoverSettings, CoverMode } from "../settings";
+import { effectiveStore, type BookSearchCoverSettings, type CoverMode, type StoreId } from "../settings";
 import { trackKeyboardViewport } from "./mobile-viewport";
 import { addKeyHints, addOptionsRow } from "./search-modal";
 
@@ -17,7 +17,7 @@ const SOURCE_NAMES: Record<CoverCandidate["source"], string> = {
 };
 
 export class CoverPickerModal extends Modal {
-	private country: string;
+	private store: StoreId;
 	private coverMode: CoverMode;
 	private generation = 0;
 	private candidates: CoverCandidate[] = [];
@@ -28,13 +28,13 @@ export class CoverPickerModal extends Modal {
 
 	constructor(
 		app: App,
-		settings: BookSearchCoverSettings,
+		private settings: BookSearchCoverSettings,
 		private noteTitle: string,
-		private fetchCandidates: (country: string) => Promise<CoverCandidate[]>,
+		private fetchCandidates: (store: StoreId) => Promise<CoverCandidate[]>,
 		private onPick: (candidate: CoverCandidate, coverMode: CoverMode) => void,
 	) {
 		super(app);
-		this.country = settings.preferredCountry;
+		this.store = effectiveStore(settings);
 		this.coverMode = settings.coverMode;
 	}
 
@@ -68,10 +68,11 @@ export class CoverPickerModal extends Modal {
 
 		const footer = this.contentEl.createDiv({ cls: "bsc-modal-footer" });
 		addOptionsRow(footer, {
-			country: this.country,
+			settings: this.settings,
+			store: this.store,
 			coverMode: this.coverMode,
-			onCountry: (code) => {
-				this.country = code;
+			onStore: (id) => {
+				this.store = id;
 				void this.load();
 			},
 			onCoverMode: (mode) => {
@@ -112,7 +113,7 @@ export class CoverPickerModal extends Modal {
 		this.candidates = [];
 		this.selected = -1;
 		this.statusEl.setText("Searching covers…");
-		const candidates = await this.fetchCandidates(this.country);
+		const candidates = await this.fetchCandidates(this.store);
 		if (gen !== this.generation) return;
 		this.statusEl.setText(candidates.length === 0 ? "No covers found." : "");
 		this.renderGrid(candidates);

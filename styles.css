@@ -442,3 +442,16 @@ body.is-mobile .bsc-cover-card-img {
 .bsc-variables-desc {
 	color: var(--text-muted);
 }
+.bsc-store-checklist {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(12em, 1fr));
+	gap: 0.25em 1em;
+	margin-top: -0.5em;
+	margin-bottom: 1em;
+}
+.bsc-store-checklist-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+	cursor: pointer;
+}
