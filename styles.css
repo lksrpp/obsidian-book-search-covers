@@ -442,3 +442,70 @@ body.is-mobile .bsc-cover-card-img {
 .bsc-variables-desc {
 	color: var(--text-muted);
 }
+/* Summary button carries a Lucide chevron so it reads as a dropdown trigger;
+   it rotates to point up while the panel is open. */
+.bsc-store-select-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+}
+.bsc-store-select-chevron {
+	display: inline-flex;
+	transition: transform 0.15s ease;
+}
+.bsc-store-select-chevron .svg-icon {
+	width: 1em;
+	height: 1em;
+}
+.bsc-store-select-toggle.is-open .bsc-store-select-chevron {
+	transform: rotate(180deg);
+}
+/* Expanding checkbox panel: a bordered surface under the setting row. */
+.bsc-store-select {
+	margin-top: -0.5em;
+}
+.bsc-store-select.is-open {
+	margin-bottom: 1em;
+	padding: 0.6em 0.75em;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+.bsc-store-select-shortcuts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4em;
+	margin-bottom: 0.6em;
+	padding-bottom: 0.6em;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+.bsc-store-shortcut {
+	font-size: var(--font-ui-small);
+	padding: 0.2em 0.7em;
+	cursor: pointer;
+}
+/* Multi-column so stores flow top-to-bottom down each column, not across rows. */
+.bsc-store-select-list {
+	columns: 14em auto;
+	column-gap: 1em;
+	max-height: 16em;
+	overflow-y: auto;
+}
+.bsc-store-select-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+	padding: 0.15em 0;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	/* Keep a store's checkbox and label from splitting across columns. */
+	break-inside: avoid;
+}
+.bsc-store-select-item input {
+	margin: 0;
+}
+/* A store unusable in the current config (e.g. Google without an API key). */
+.bsc-store-select-item.is-disabled {
+	color: var(--text-muted);
+	cursor: not-allowed;
+}

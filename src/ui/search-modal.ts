@@ -15,12 +15,20 @@ import {
 } from "obsidian";
 import { type BookResult, yearOf } from "../model";
 import { searchBooks } from "../search";
-import { type BookSearchCoverSettings, type CoverMode, STORES } from "../settings";
+import {
+	effectiveStore,
+	populateStoreDropdown,
+	resolveStore,
+	switcherStoreList,
+	type BookSearchCoverSettings,
+	type CoverMode,
+	type StoreId,
+} from "../settings";
 import { trackKeyboardViewport } from "./mobile-viewport";
 
 /** Per-invocation choices made in a modal, overriding the settings defaults. */
 export interface SearchOverrides {
-	country: string;
+	store: StoreId;
 	coverMode: CoverMode;
 }
 
@@ -28,7 +36,7 @@ const MIN_QUERY_LEN = 3;
 const DEBOUNCE_MS = 600;
 
 export class BookSearchModal extends Modal {
-	private country: string;
+	private store: StoreId;
 	private coverMode: CoverMode;
 	private results: BookResult[] = [];
 	private selected = -1;
@@ -45,7 +53,7 @@ export class BookSearchModal extends Modal {
 		private onPick: (book: BookResult, overrides: SearchOverrides) => Promise<boolean>,
 	) {
 		super(app);
-		this.country = settings.preferredCountry;
+		this.store = effectiveStore(settings);
 		this.coverMode = settings.coverMode;
 	}
 
@@ -66,10 +74,11 @@ export class BookSearchModal extends Modal {
 		// from the input to the results.
 		const footer = this.contentEl.createDiv({ cls: "bsc-modal-footer" });
 		addOptionsRow(footer, {
-			country: this.country,
+			settings: this.settings,
+			store: this.store,
 			coverMode: this.coverMode,
-			onCountry: (code) => {
-				this.country = code;
+			onStore: (id) => {
+				this.store = id;
 				void this.runSearch();
 			},
 			onCoverMode: (mode) => {
@@ -120,7 +129,7 @@ export class BookSearchModal extends Modal {
 		const gen = ++this.generation;
 		this.renderSkeleton();
 		try {
-			const results = await searchBooks(query, this.settings, this.country);
+			const results = await searchBooks(query, this.settings, this.store);
 			if (gen !== this.generation) return; // a newer search superseded this one
 			this.results = results;
 			if (results.length === 0) {
@@ -223,7 +232,7 @@ export class BookSearchModal extends Modal {
 		this.picking = true;
 		try {
 			const close = await this.onPick(book, {
-				country: this.country,
+				store: this.store,
 				coverMode: this.coverMode,
 			});
 			if (close) this.close();
@@ -241,9 +250,10 @@ export class BookSearchModal extends Modal {
 export function addOptionsRow(
 	parent: HTMLElement,
 	opts: {
-		country: string;
+		settings: BookSearchCoverSettings;
+		store: StoreId;
 		coverMode: CoverMode;
-		onCountry: (code: string) => void;
+		onStore: (id: StoreId) => void;
 		onCoverMode: (mode: CoverMode) => void;
 	},
 ): void {
@@ -255,13 +265,14 @@ export function addOptionsRow(
 	const storeOpt = row.createDiv({ cls: "bsc-option" });
 	setIcon(storeOpt.createSpan({ cls: "bsc-option-icon" }), "globe");
 	storeOpt.createEl("label", { cls: "bsc-option-label", text: "Store" });
-	setTooltip(storeOpt, "Store region for search results and covers. This search only.");
+	setTooltip(storeOpt, "Store for search results and covers. This search only.");
 	const dropdown = new DropdownComponent(storeOpt);
-	for (const store of STORES) dropdown.addOption(store.code, `${store.label} (${store.code})`);
-	if (!STORES.some((s) => s.code === opts.country)) {
-		dropdown.addOption(opts.country, opts.country);
+	const stores = switcherStoreList(opts.settings);
+	populateStoreDropdown(dropdown, stores, opts.settings.googleApiKey !== "");
+	if (!stores.some((s) => s.id === opts.store)) {
+		dropdown.addOption(opts.store, resolveStore(opts.store).label);
 	}
-	dropdown.setValue(opts.country).onChange(opts.onCountry);
+	dropdown.setValue(opts.store).onChange((v) => opts.onStore(v as StoreId));
 
 	const coverOpt = row.createDiv({ cls: "bsc-option" });
 	setIcon(coverOpt.createSpan({ cls: "bsc-option-icon" }), "image");

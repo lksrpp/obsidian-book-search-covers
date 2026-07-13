@@ -1,4 +1,12 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import {
+	App,
+	ButtonComponent,
+	DropdownComponent,
+	Notice,
+	PluginSettingTab,
+	Setting,
+	setIcon,
+} from "obsidian";
 import type BookSearchCoverPlugin from "./main";
 import { createTemplateFile } from "./note";
 import { DEFAULT_TEMPLATE, VARIABLE_DOCS } from "./template";
@@ -20,34 +28,128 @@ export function clampCoverSize(n: number): number {
  * and Google Books' `country`.
  */
 export const STORES: ReadonlyArray<{ code: string; label: string }> = [
-	{ code: "DE", label: "Germany" },
 	{ code: "AT", label: "Austria" },
+	{ code: "AU", label: "Australia" },
+	{ code: "BE", label: "Belgium" },
+	{ code: "CA", label: "Canada" },
 	{ code: "CH", label: "Switzerland" },
-	{ code: "US", label: "United States" },
+	{ code: "DE", label: "Germany" },
+	{ code: "DK", label: "Denmark" },
+	{ code: "ES", label: "Spain" },
+	{ code: "FI", label: "Finland" },
+	{ code: "FR", label: "France" },
 	{ code: "GB", label: "United Kingdom" },
 	{ code: "IE", label: "Ireland" },
-	{ code: "FR", label: "France" },
 	{ code: "IT", label: "Italy" },
-	{ code: "ES", label: "Spain" },
-	{ code: "NL", label: "Netherlands" },
-	{ code: "BE", label: "Belgium" },
-	{ code: "LU", label: "Luxembourg" },
-	{ code: "SE", label: "Sweden" },
-	{ code: "DK", label: "Denmark" },
-	{ code: "NO", label: "Norway" },
-	{ code: "FI", label: "Finland" },
-	{ code: "PT", label: "Portugal" },
-	{ code: "CA", label: "Canada" },
-	{ code: "AU", label: "Australia" },
-	{ code: "NZ", label: "New Zealand" },
 	{ code: "JP", label: "Japan" },
+	{ code: "LU", label: "Luxembourg" },
+	{ code: "NL", label: "Netherlands" },
+	{ code: "NO", label: "Norway" },
+	{ code: "NZ", label: "New Zealand" },
+	{ code: "PT", label: "Portugal" },
+	{ code: "SE", label: "Sweden" },
+	{ code: "US", label: "United States" },
 ];
+
+/**
+ * A store is an explicit provider + region choice — the thing the user
+ * actually picks, not a hidden fallback chain. Open Library carries no
+ * region; each Google entry is one `STORES` country.
+ */
+export type StoreId = "openlibrary" | `google:${string}`;
+
+/**
+ * A resolved store. Discriminated on `provider` so a Google store always
+ * carries a `country` (ISO 3166-1 alpha-2) while Open Library never does —
+ * callers in the Google branch get `country` typed as a plain string.
+ */
+export type Store =
+	| { id: "openlibrary"; provider: "openlibrary"; country?: undefined; label: string }
+	| { id: `google:${string}`; provider: "google"; country: string; label: string };
+
+/** Every selectable store: Open Library, plus one Google entry per `STORES` country. */
+export function allStores(): Store[] {
+	return [
+		{ id: "openlibrary", provider: "openlibrary", label: "Open Library" },
+		...STORES.map(
+			(s): Store => ({
+				id: `google:${s.code}`,
+				provider: "google",
+				country: s.code,
+				label: `Google ${s.code} (${s.label})`,
+			}),
+		),
+	];
+}
+
+/** Parse a `StoreId` into its provider + region. Unknown Google country codes still resolve. */
+export function resolveStore(id: StoreId): Store {
+	if (id === "openlibrary") return { id, provider: "openlibrary", label: "Open Library" };
+	const code = id.slice("google:".length);
+	const known = STORES.find((s) => s.code === code);
+	return {
+		id,
+		provider: "google",
+		country: code,
+		label: known ? `Google ${code} (${known.label})` : `Google — ${code}`,
+	};
+}
+
+/** Cover-search region for Apple/Google: the store's own country, or US when it has none (Open Library). */
+export function coverCountryFor(id: StoreId): string {
+	return resolveStore(id).country ?? "US";
+}
+
+/**
+ * The store actually usable right now: falls back to Open Library when the
+ * configured store is Google but no API key is set (Google stores are
+ * unusable without one — see the "Default store" dropdown below).
+ */
+export function effectiveStore(settings: BookSearchCoverSettings): StoreId {
+	const store = resolveStore(settings.store);
+	return store.provider === "google" && !settings.googleApiKey ? "openlibrary" : settings.store;
+}
+
+/**
+ * Stores offered in the modal's quick switcher: the curated `switcherStores`
+ * list, or every store when that list is empty (the default — good-enough
+ * transparency until the user curates it down).
+ */
+export function switcherStoreList(settings: BookSearchCoverSettings): Store[] {
+	if (settings.switcherStores.length === 0) return allStores();
+	const chosen = new Set(settings.switcherStores);
+	return allStores().filter((s) => chosen.has(s.id));
+}
+
+/**
+ * Fill a store dropdown, greying out Google entries when no API key is set
+ * (they are unusable without one).
+ */
+export function populateStoreDropdown(
+	dropdown: DropdownComponent,
+	stores: readonly Store[],
+	hasApiKey: boolean,
+): void {
+	for (const store of stores) {
+		dropdown.addOption(store.id, store.label);
+		if (store.provider === "google" && !hasApiKey) {
+			const opt = Array.from(dropdown.selectEl.options).find((o) => o.value === store.id);
+			if (opt) opt.disabled = true;
+		}
+	}
+}
 
 export interface BookSearchCoverSettings {
 	/** Google Books API key (free). Stored locally in data.json. */
 	googleApiKey: string;
-	/** Default store/country code for Google and Apple (e.g. "DE"). Overridable per search. */
-	preferredCountry: string;
+	/** Default store (provider + region) for search results and covers. Overridable per search. */
+	store: StoreId;
+	/**
+	 * Stores offered as chips/options in the modal's quick switcher. Empty
+	 * (the default) means "show all" — curate this down once the long list
+	 * gets in the way.
+	 */
+	switcherStores: StoreId[];
 	/** Square cover size requested from Apple (px). 800 is the sweet spot. */
 	coverSize: number;
 	/** Keep the remote URL, or download the image into the vault. Overridable per search. */
@@ -80,7 +182,8 @@ export const SUGGESTED_TEMPLATE_PATH = "Templates/Book template.md";
 
 export const DEFAULT_SETTINGS: BookSearchCoverSettings = {
 	googleApiKey: "",
-	preferredCountry: "DE",
+	store: "google:DE",
+	switcherStores: [],
 	coverSize: 800,
 	coverMode: "link",
 	coverFolder: "covers",
@@ -90,6 +193,26 @@ export const DEFAULT_SETTINGS: BookSearchCoverSettings = {
 	noteTemplate: DEFAULT_TEMPLATE,
 	templateFile: "",
 };
+
+/** Shape data.json could still be in from before the store rework (1.0.3 and earlier). */
+interface PreStoreSettings {
+	preferredCountry?: string;
+}
+
+/**
+ * Migrate a pre-store settings object in place: derive `store` from the old
+ * `googleApiKey` + `preferredCountry` pair. A no-op once `store` is present.
+ */
+export function migrateStoreSetting(
+	stored: (Partial<BookSearchCoverSettings> & PreStoreSettings) | null,
+): void {
+	if (!stored || stored.store) return;
+	stored.store = stored.googleApiKey
+		? `google:${stored.preferredCountry ?? "DE"}`
+		: "openlibrary";
+	// Drop the legacy key so it doesn't linger in the merged settings / data.json.
+	delete stored.preferredCountry;
+}
 
 export class BookSearchCoverSettingTab extends PluginSettingTab {
 	constructor(
@@ -106,17 +229,22 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("Search").setHeading();
 
+		// Assigned when the "Default store" dropdown below is built; the API key
+		// field's onChange uses it to refresh which Google stores are greyed out.
+		let storeDropdown: DropdownComponent;
+
 		new Setting(containerEl)
 			.setName("Google Books API key")
 			.setDesc(
 				createFragment((frag) => {
-					frag.appendText(
-						"Free key from the Google Cloud console (Books API). Without a key, Open Library is used instead. ",
-					);
+					frag.appendText("Free key from the Google Cloud console (Books API). ");
 					frag.createEl("a", {
 						text: "Step-by-step guide",
 						href: "https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md",
 					});
+					frag.appendText(
+						". Without a key, searches use the free Open Library instead, with sparser metadata and covers.",
+					);
 				}),
 			)
 			.addText((t) =>
@@ -126,31 +254,145 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					.onChange(async (v) => {
 						s.googleApiKey = v.trim();
 						await this.plugin.saveSettings();
+						// Google stores are unusable without a key; keep the store
+						// dropdown and the switcher checkboxes' greyed-out state in
+						// sync as the key is typed or cleared, without a full
+						// re-render (which would lose focus on this field).
+						refreshStoreDropdownDisabled();
+						renderSwitcher();
 					}),
 			);
 
 		new Setting(containerEl)
 			.setName("Default store")
 			.setDesc(
-				"Store region for search results and covers. Can be changed per search in the modal.",
+				"The provider and region used for searches and covers by default. Always available in the modal, and changeable per search. Google stores need the API key above.",
 			)
 			.addDropdown((d) => {
-				for (const store of STORES) d.addOption(store.code, `${store.label} (${store.code})`);
-				// Keep an unknown stored value selectable instead of silently jumping to DE.
-				if (!STORES.some((store) => store.code === s.preferredCountry)) {
-					d.addOption(s.preferredCountry, s.preferredCountry);
+				storeDropdown = d;
+				const stores = allStores();
+				populateStoreDropdown(d, stores, s.googleApiKey !== "");
+				// Keep an unknown stored value selectable instead of silently jumping to the default.
+				if (!stores.some((store) => store.id === s.store)) {
+					d.addOption(s.store, s.store);
 				}
-				d.setValue(s.preferredCountry).onChange(async (v) => {
-					s.preferredCountry = v;
+				d.setValue(s.store).onChange(async (v) => {
+					s.store = v as StoreId;
 					await this.plugin.saveSettings();
 				});
 			});
+
+		// Re-grey the Google store options to match the current API key. Called
+		// from the key field's onChange so the two settings stay consistent
+		// without a full re-render.
+		const refreshStoreDropdownDisabled = (): void => {
+			const hasKey = s.googleApiKey !== "";
+			for (const opt of Array.from(storeDropdown.selectEl.options)) {
+				if (opt.value.startsWith("google:")) opt.disabled = !hasKey;
+			}
+		};
+
+		// Multi-select "filter dropdown" for the modal's store picker. An empty
+		// switcherStores means "all" (the canonical default); the panel below the
+		// row expands to a checkbox list plus quick shortcuts.
+		let switcherToggle: ButtonComponent;
+		let switcherLabel: HTMLElement;
+		let switcherOpen = false;
+
+		new Setting(containerEl)
+			.setName("Stores in quick switcher")
+			.setDesc(
+				"Extra stores to offer in the modal's picker for quick switching during specific book searches. The default store above is always available; these are added to it.",
+			)
+			.addButton((btn) => {
+				switcherToggle = btn;
+				btn.buttonEl.addClass("bsc-store-select-toggle");
+				// Build the label ourselves so a Lucide chevron can sit beside it
+				// (setButtonText would wipe the icon).
+				switcherLabel = btn.buttonEl.createSpan();
+				setIcon(btn.buttonEl.createSpan({ cls: "bsc-store-select-chevron" }), "chevron-down");
+				btn.onClick(() => {
+					switcherOpen = !switcherOpen;
+					renderSwitcher();
+				});
+			});
+		const panelEl = containerEl.createDiv({ cls: "bsc-store-select" });
+
+		// The current selection, expanding the empty = "all" sentinel.
+		const selectedIds = (): StoreId[] =>
+			s.switcherStores.length === 0 ? allStores().map((st) => st.id) : s.switcherStores;
+
+		// Persist a selection in canonical order, collapsing "everything" back to
+		// the empty sentinel. Callers guarantee at least one id — an empty
+		// switcher would be indistinguishable from "all".
+		const setSelection = (ids: Iterable<StoreId>): void => {
+			const wanted = new Set(ids);
+			const canonical = allStores()
+				.map((st) => st.id)
+				.filter((id) => wanted.has(id));
+			s.switcherStores = canonical.length === allStores().length ? [] : canonical;
+			void this.plugin.saveSettings();
+			renderSwitcher();
+		};
+
+		const renderSwitcher = (): void => {
+			const all = allStores();
+			const selected = new Set(selectedIds());
+			switcherLabel.setText(
+				selected.size === all.length ? "All stores" : `${selected.size} of ${all.length} stores`,
+			);
+			switcherToggle.buttonEl.toggleClass("is-open", switcherOpen);
+
+			panelEl.empty();
+			panelEl.toggleClass("is-open", switcherOpen);
+			if (!switcherOpen) return;
+
+			// Shortcuts: reset to all, or narrow to Open Library only.
+			const shortcuts = panelEl.createDiv({ cls: "bsc-store-select-shortcuts" });
+			const addShortcut = (label: string, ids: StoreId[]): void => {
+				const b = shortcuts.createEl("button", { text: label, cls: "bsc-store-shortcut" });
+				b.addEventListener("click", () => setSelection(ids));
+			};
+			addShortcut(
+				"All",
+				all.map((st) => st.id),
+			);
+			addShortcut("Only Open Library", ["openlibrary"]);
+
+			// One checkbox per store, in canonical order. Google stores are
+			// unusable without an API key, so they show disabled and unchecked.
+			const hasKey = s.googleApiKey !== "";
+			const list = panelEl.createDiv({ cls: "bsc-store-select-list" });
+			for (const store of all) {
+				const disabled = store.provider === "google" && !hasKey;
+				const item = list.createEl("label", { cls: "bsc-store-select-item" });
+				item.toggleClass("is-disabled", disabled);
+				const cb = item.createEl("input", { type: "checkbox" });
+				cb.checked = !disabled && selected.has(store.id);
+				cb.disabled = disabled;
+				item.appendText(store.label);
+				cb.addEventListener("change", () => {
+					const next = new Set(selectedIds());
+					if (cb.checked) next.add(store.id);
+					else next.delete(store.id);
+					// Never allow an empty switcher; keep the last store on.
+					if (next.size === 0) {
+						cb.checked = true;
+						return;
+					}
+					setSelection(next);
+				});
+			}
+		};
+		renderSwitcher();
 
 		new Setting(containerEl).setName("Covers").setHeading();
 
 		new Setting(containerEl)
 			.setName("Cover storage")
-			.setDesc("Can be overridden per search in the modal.")
+			.setDesc(
+				"Whether covers are linked by remote URL or downloaded into your vault. Can be overridden per search.",
+			)
 			.addDropdown((d) =>
 				d
 					.addOption("link", "Link the remote image URL")
@@ -165,7 +407,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Cover folder")
 			.setDesc(
-				"Where downloaded covers are stored, also when downloading is only chosen per search.",
+				"Where downloaded covers are saved, including when download is chosen for just a single search.",
 			)
 			.addText((t) => {
 				t.setValue(s.coverFolder).onChange(async (v) => {
@@ -179,7 +421,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Cover size")
 			.setDesc(
-				"Cover px requested from Apple/Google (clamped to 100–2000). 600, 800 or 1400 are common.",
+				"Cover width in pixels requested from Apple/Google (clamped to 100–2000). 600, 800, or 1400 are common.",
 			)
 			.addText((t) =>
 				t.setValue(String(s.coverSize)).onChange(async (v) => {
@@ -190,7 +432,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Cover frontmatter property")
-			.setDesc('Property the "fetch cover" command writes into.')
+			.setDesc('Frontmatter property the "Fetch cover" command writes the cover into.')
 			.addText((t) =>
 				t.setValue(s.coverProperty).onChange(async (v) => {
 					s.coverProperty = v.trim() || "cover";
@@ -217,7 +459,9 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		let fileNameInput: HTMLInputElement | undefined;
 		new Setting(containerEl)
 			.setName("File name template")
-			.setDesc("Note basename. Supports the same {{variables}} as the note template.")
+			.setDesc(
+				"The new note's file name, without extension. Supports the same {{variables}} as the note template.",
+			)
 			.addText((t) => {
 				fileNameInput = t.inputEl;
 				t.setValue(s.fileNameTemplate).onChange(async (v) => {
@@ -246,7 +490,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Note template")
 			.setDesc(
-				"Whole note (frontmatter + body), {{var}} placeholders. Ignored while a template file is set below.",
+				"The whole note, frontmatter and body, with {{variable}} placeholders. Ignored if a template file is set below.",
 			)
 			.addExtraButton((b) =>
 				b

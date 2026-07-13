@@ -3,7 +3,9 @@ import {
 	type BookSearchCoverSettings,
 	BookSearchCoverSettingTab,
 	clampCoverSize,
+	coverCountryFor,
 	DEFAULT_SETTINGS,
+	migrateStoreSetting,
 } from "./settings";
 import { openBookSearch, type SearchOverrides } from "./ui/search-modal";
 import { confirmDuplicate } from "./ui/duplicate-dialog";
@@ -54,6 +56,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		const stored = (await this.loadData()) as Partial<BookSearchCoverSettings> | null;
+		migrateStoreSetting(stored);
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, stored);
 		this.settings.coverSize = clampCoverSize(this.settings.coverSize);
 	}
@@ -158,11 +161,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 			this.app,
 			this.settings,
 			title,
-			(country) =>
-				collectCoverCandidates(
-					{ title, author },
-					{ ...this.settings, preferredCountry: country },
-				),
+			(store) => collectCoverCandidates({ title, author }, this.settings, coverCountryFor(store)),
 			(candidate, coverMode) => void this.applyCover(file, candidate, coverMode),
 		).open();
 	}
