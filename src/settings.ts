@@ -229,6 +229,10 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("Search").setHeading();
 
+		// Assigned when the "Default store" dropdown below is built; the API key
+		// field's onChange uses it to refresh which Google stores are greyed out.
+		let storeDropdown: DropdownComponent;
+
 		new Setting(containerEl)
 			.setName("Google Books API key")
 			.setDesc(
@@ -250,6 +254,12 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					.onChange(async (v) => {
 						s.googleApiKey = v.trim();
 						await this.plugin.saveSettings();
+						// Google stores are unusable without a key; keep the store
+						// dropdown and the switcher checkboxes' greyed-out state in
+						// sync as the key is typed or cleared, without a full
+						// re-render (which would lose focus on this field).
+						refreshStoreDropdownDisabled();
+						renderSwitcher();
 					}),
 			);
 
@@ -259,6 +269,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 				"The provider and region used for searches and covers by default. Always available in the modal, and changeable per search. Google stores need the API key above.",
 			)
 			.addDropdown((d) => {
+				storeDropdown = d;
 				const stores = allStores();
 				populateStoreDropdown(d, stores, s.googleApiKey !== "");
 				// Keep an unknown stored value selectable instead of silently jumping to the default.
@@ -271,6 +282,16 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 				});
 			});
 
+		// Re-grey the Google store options to match the current API key. Called
+		// from the key field's onChange so the two settings stay consistent
+		// without a full re-render.
+		const refreshStoreDropdownDisabled = (): void => {
+			const hasKey = s.googleApiKey !== "";
+			for (const opt of Array.from(storeDropdown.selectEl.options)) {
+				if (opt.value.startsWith("google:")) opt.disabled = !hasKey;
+			}
+		};
+
 		// Multi-select "filter dropdown" for the modal's store picker. An empty
 		// switcherStores means "all" (the canonical default); the panel below the
 		// row expands to a checkbox list plus quick shortcuts.
@@ -281,7 +302,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Stores in quick switcher")
 			.setDesc(
-				"Extra stores to offer in the modal's picker for quick switching during specific book searches. The default store above is always available; these are added to it. All stores shown by default.",
+				"Extra stores to offer in the modal's picker for quick switching during specific book searches. The default store above is always available; these are added to it.",
 			)
 			.addButton((btn) => {
 				switcherToggle = btn;
@@ -338,12 +359,17 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 			);
 			addShortcut("Only Open Library", ["openlibrary"]);
 
-			// One checkbox per store, in canonical order.
+			// One checkbox per store, in canonical order. Google stores are
+			// unusable without an API key, so they show disabled and unchecked.
+			const hasKey = s.googleApiKey !== "";
 			const list = panelEl.createDiv({ cls: "bsc-store-select-list" });
 			for (const store of all) {
+				const disabled = store.provider === "google" && !hasKey;
 				const item = list.createEl("label", { cls: "bsc-store-select-item" });
+				item.toggleClass("is-disabled", disabled);
 				const cb = item.createEl("input", { type: "checkbox" });
-				cb.checked = selected.has(store.id);
+				cb.checked = !disabled && selected.has(store.id);
+				cb.disabled = disabled;
 				item.appendText(store.label);
 				cb.addEventListener("change", () => {
 					const next = new Set(selectedIds());

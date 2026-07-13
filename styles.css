@@ -504,3 +504,8 @@ body.is-mobile .bsc-cover-card-img {
 .bsc-store-select-item input {
 	margin: 0;
 }
+/* A store unusable in the current config (e.g. Google without an API key). */
+.bsc-store-select-item.is-disabled {
+	color: var(--text-muted);
+	cursor: not-allowed;
+}
