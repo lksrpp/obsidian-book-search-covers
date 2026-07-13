@@ -14,22 +14,15 @@ Users install exactly three files, attached as assets to a GitHub release: `main
 ## Cutting a release
 
 1. Make sure `main` is green: `npm test && npm run build && npm run lint`.
-2. Bump the version (updates `package.json`, `manifest.json`, `versions.json` via `version-bump.mjs`, and stages the latter two):
+2. Bump the version and push it, commit and tag together. `.npmrc` sets `tag-version-prefix=""`, so the tag `npm version` creates already matches `manifest.json` exactly — semantic versioning, **no `v` prefix**:
 
    ```bash
    npm version patch        # or minor / major / an explicit x.y.z
-   git push origin main
+   git push origin main --follow-tags
    ```
 
-3. Tag and push. The tag must equal the version in `manifest.json` exactly — semantic versioning, **no `v` prefix**:
-
-   ```bash
-   git tag -a 1.0.1 -m "1.0.1"
-   git push origin 1.0.1
-   ```
-
-4. The `release.yml` GitHub Action triggers on the tag: it runs the tests, builds, and creates a **draft** release with the three assets attached.
-5. Review the draft at GitHub → Releases, add release notes, and **publish**. Nothing is visible to users until this step.
+3. The `release.yml` GitHub Action triggers on the tag: it runs the tests, builds, and creates a **draft** release with the three assets attached.
+4. Review the draft at GitHub → Releases, add release notes, and **publish**. Nothing is visible to users until this step.
 
 If the workflow fails, fix the problem on `main`, then move the tag:
 
