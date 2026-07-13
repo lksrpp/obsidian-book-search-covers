@@ -93,4 +93,4 @@ Google occasionally changes how their website looks. The general flow — create
 
 ---
 
-*If this guide stops matching what you see on screen, please let us know so we can update it.*
+*If you still have open questions, let me know, so I can update it.*

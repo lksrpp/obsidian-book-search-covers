@@ -7,7 +7,9 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
-		"lint": "eslint .",
+		"lint": "eslint . && npm run lint:css && npm run lint:manifest",
+		"lint:css": "stylelint styles.css",
+		"lint:manifest": "node scripts/validate-manifest.mjs",
 		"test": "vitest run",
 		"format": "prettier --write \"src/**/*.ts\""
 	},
@@ -27,11 +29,16 @@
 		"eslint-plugin-obsidianmd": "^0.3.0",
 		"obsidian": "^1.7.0",
 		"prettier": "^3.0.0",
+		"stylelint": "^17.14.0",
+		"stylelint-no-unsupported-browser-features": "^8.1.1",
 		"typescript": "^5.8.3",
 		"typescript-eslint": "^8.0.0",
 		"vitest": "^4.1.8"
 	},
 	"allowScripts": {
 		"esbuild@0.28.0": true
-	}
+	},
+	"browserslist": [
+		"chrome 118"
+	]
 }

@@ -484,22 +484,24 @@ body.is-mobile .bsc-cover-card-img {
 	padding: 0.2em 0.7em;
 	cursor: pointer;
 }
-/* Multi-column so stores flow top-to-bottom down each column, not across rows. */
+/* Grid with a fixed row count so stores flow top-to-bottom, 8 per column, instead of
+   across rows. (CSS multicol is avoided here: it's only partially supported, notably
+   on the WebKit engine Obsidian Mobile uses, especially inside scrolling containers.) */
 .bsc-store-select-list {
-	columns: 14em auto;
-	column-gap: 1em;
-	max-height: 16em;
-	overflow-y: auto;
+	display: grid;
+	grid-auto-flow: column;
+	grid-template-rows: repeat(8, auto);
+	gap: 0 1em;
+	overflow-x: auto;
 }
 .bsc-store-select-item {
 	display: flex;
 	align-items: center;
 	gap: 0.5em;
+	width: 14em;
 	padding: 0.15em 0;
 	font-size: var(--font-ui-small);
 	cursor: pointer;
-	/* Keep a store's checkbox and label from splitting across columns. */
-	break-inside: avoid;
 }
 .bsc-store-select-item input {
 	margin: 0;
