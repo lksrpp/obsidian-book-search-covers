@@ -1,4 +1,12 @@
-import { App, DropdownComponent, Notice, PluginSettingTab, Setting } from "obsidian";
+import {
+	App,
+	ButtonComponent,
+	DropdownComponent,
+	Notice,
+	PluginSettingTab,
+	Setting,
+	setIcon,
+} from "obsidian";
 import type BookSearchCoverPlugin from "./main";
 import { createTemplateFile } from "./note";
 import { DEFAULT_TEMPLATE, VARIABLE_DOCS } from "./template";
@@ -225,13 +233,14 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 			.setName("Google Books API key")
 			.setDesc(
 				createFragment((frag) => {
-					frag.appendText(
-						"Free key from the Google Cloud console (Books API). Without a key, Open Library is used instead. ",
-					);
+					frag.appendText("Free key from the Google Cloud console (Books API). ");
 					frag.createEl("a", {
 						text: "Step-by-step guide",
 						href: "https://github.com/lksrpp/obsidian-book-search-covers/blob/main/docs/google-books-api-key.md",
 					});
+					frag.appendText(
+						". Without a key, searches use the free Open Library instead, with sparser metadata and covers.",
+					);
 				}),
 			)
 			.addText((t) =>
@@ -247,7 +256,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Default store")
 			.setDesc(
-				"Store searched and used for covers. Can be changed per search in the modal. Google stores need the API key above.",
+				"The provider and region used for searches and covers by default. Always available in the modal, and changeable per search. Google stores need the API key above.",
 			)
 			.addDropdown((d) => {
 				const stores = allStores();
@@ -262,30 +271,102 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 				});
 			});
 
+		// Multi-select "filter dropdown" for the modal's store picker. An empty
+		// switcherStores means "all" (the canonical default); the panel below the
+		// row expands to a checkbox list plus quick shortcuts.
+		let switcherToggle: ButtonComponent;
+		let switcherLabel: HTMLElement;
+		let switcherOpen = false;
+
 		new Setting(containerEl)
 			.setName("Stores in quick switcher")
 			.setDesc(
-				"Which stores show up in the modal's store dropdown. None checked = show all.",
-			);
-		const switcherList = containerEl.createDiv({ cls: "bsc-store-checklist" });
-		for (const store of allStores()) {
-			const item = switcherList.createEl("label", { cls: "bsc-store-checklist-item" });
-			const checkbox = item.createEl("input", { type: "checkbox" });
-			checkbox.checked = s.switcherStores.includes(store.id);
-			item.appendText(store.label);
-			checkbox.addEventListener("change", () => {
-				s.switcherStores = checkbox.checked
-					? [...s.switcherStores, store.id]
-					: s.switcherStores.filter((id) => id !== store.id);
-				void this.plugin.saveSettings();
+				"Extra stores to offer in the modal's picker for quick switching during specific book searches. The default store above is always available; these are added to it. All stores shown by default.",
+			)
+			.addButton((btn) => {
+				switcherToggle = btn;
+				btn.buttonEl.addClass("bsc-store-select-toggle");
+				// Build the label ourselves so a Lucide chevron can sit beside it
+				// (setButtonText would wipe the icon).
+				switcherLabel = btn.buttonEl.createSpan();
+				setIcon(btn.buttonEl.createSpan({ cls: "bsc-store-select-chevron" }), "chevron-down");
+				btn.onClick(() => {
+					switcherOpen = !switcherOpen;
+					renderSwitcher();
+				});
 			});
-		}
+		const panelEl = containerEl.createDiv({ cls: "bsc-store-select" });
+
+		// The current selection, expanding the empty = "all" sentinel.
+		const selectedIds = (): StoreId[] =>
+			s.switcherStores.length === 0 ? allStores().map((st) => st.id) : s.switcherStores;
+
+		// Persist a selection in canonical order, collapsing "everything" back to
+		// the empty sentinel. Callers guarantee at least one id — an empty
+		// switcher would be indistinguishable from "all".
+		const setSelection = (ids: Iterable<StoreId>): void => {
+			const wanted = new Set(ids);
+			const canonical = allStores()
+				.map((st) => st.id)
+				.filter((id) => wanted.has(id));
+			s.switcherStores = canonical.length === allStores().length ? [] : canonical;
+			void this.plugin.saveSettings();
+			renderSwitcher();
+		};
+
+		const renderSwitcher = (): void => {
+			const all = allStores();
+			const selected = new Set(selectedIds());
+			switcherLabel.setText(
+				selected.size === all.length ? "All stores" : `${selected.size} of ${all.length} stores`,
+			);
+			switcherToggle.buttonEl.toggleClass("is-open", switcherOpen);
+
+			panelEl.empty();
+			panelEl.toggleClass("is-open", switcherOpen);
+			if (!switcherOpen) return;
+
+			// Shortcuts: reset to all, or narrow to Open Library only.
+			const shortcuts = panelEl.createDiv({ cls: "bsc-store-select-shortcuts" });
+			const addShortcut = (label: string, ids: StoreId[]): void => {
+				const b = shortcuts.createEl("button", { text: label, cls: "bsc-store-shortcut" });
+				b.addEventListener("click", () => setSelection(ids));
+			};
+			addShortcut(
+				"All",
+				all.map((st) => st.id),
+			);
+			addShortcut("Only Open Library", ["openlibrary"]);
+
+			// One checkbox per store, in canonical order.
+			const list = panelEl.createDiv({ cls: "bsc-store-select-list" });
+			for (const store of all) {
+				const item = list.createEl("label", { cls: "bsc-store-select-item" });
+				const cb = item.createEl("input", { type: "checkbox" });
+				cb.checked = selected.has(store.id);
+				item.appendText(store.label);
+				cb.addEventListener("change", () => {
+					const next = new Set(selectedIds());
+					if (cb.checked) next.add(store.id);
+					else next.delete(store.id);
+					// Never allow an empty switcher; keep the last store on.
+					if (next.size === 0) {
+						cb.checked = true;
+						return;
+					}
+					setSelection(next);
+				});
+			}
+		};
+		renderSwitcher();
 
 		new Setting(containerEl).setName("Covers").setHeading();
 
 		new Setting(containerEl)
 			.setName("Cover storage")
-			.setDesc("Can be overridden per search in the modal.")
+			.setDesc(
+				"Whether covers are linked by remote URL or downloaded into your vault. Can be overridden per search.",
+			)
 			.addDropdown((d) =>
 				d
 					.addOption("link", "Link the remote image URL")
@@ -300,7 +381,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Cover folder")
 			.setDesc(
-				"Where downloaded covers are stored, also when downloading is only chosen per search.",
+				"Where downloaded covers are saved, including when download is chosen for just a single search.",
 			)
 			.addText((t) => {
 				t.setValue(s.coverFolder).onChange(async (v) => {
@@ -314,7 +395,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Cover size")
 			.setDesc(
-				"Cover px requested from Apple/Google (clamped to 100–2000). 600, 800 or 1400 are common.",
+				"Cover width in pixels requested from Apple/Google (clamped to 100–2000). 600, 800, or 1400 are common.",
 			)
 			.addText((t) =>
 				t.setValue(String(s.coverSize)).onChange(async (v) => {
@@ -325,7 +406,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Cover frontmatter property")
-			.setDesc('Property the "fetch cover" command writes into.')
+			.setDesc('Frontmatter property the "Fetch cover" command writes the cover into.')
 			.addText((t) =>
 				t.setValue(s.coverProperty).onChange(async (v) => {
 					s.coverProperty = v.trim() || "cover";
@@ -352,7 +433,9 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		let fileNameInput: HTMLInputElement | undefined;
 		new Setting(containerEl)
 			.setName("File name template")
-			.setDesc("Note basename. Supports the same {{variables}} as the note template.")
+			.setDesc(
+				"The new note's file name, without extension. Supports the same {{variables}} as the note template.",
+			)
 			.addText((t) => {
 				fileNameInput = t.inputEl;
 				t.setValue(s.fileNameTemplate).onChange(async (v) => {
@@ -381,7 +464,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Note template")
 			.setDesc(
-				"Whole note (frontmatter + body), {{var}} placeholders. Ignored while a template file is set below.",
+				"The whole note, frontmatter and body, with {{variable}} placeholders. Ignored if a template file is set below.",
 			)
 			.addExtraButton((b) =>
 				b
