@@ -4,8 +4,8 @@
 // A free API key is required as of 2026 — the keyless path is hard quota-gated.
 // The key lives in plugin settings (data.json, local to the device).
 
-import { requestUrl } from "obsidian";
 import { asIsbnQuery, type BookResult } from "../model";
+import { requestWithRetry } from "./http";
 
 const ENDPOINT = "https://www.googleapis.com/books/v1/volumes";
 const MAX_RESULTS = 5;
@@ -50,7 +50,7 @@ export async function searchGoogleBooks(
 
 	let res;
 	try {
-		res = await requestUrl({ url: url.toString(), throw: false });
+		res = await requestWithRetry({ url: url.toString() });
 	} catch {
 		throw new GoogleBooksError(
 			"Could not reach Google Books. Check your internet connection.",
@@ -64,6 +64,11 @@ export async function searchGoogleBooks(
 	if (res.status === 429) {
 		throw new GoogleBooksError(
 			"Google Books daily quota reached (free tier: 1,000 searches). Try again tomorrow.",
+		);
+	}
+	if (res.status >= 500) {
+		throw new GoogleBooksError(
+			`Google Books is temporarily unavailable (status ${res.status}) after retrying. Try again in a moment, or switch to another store.`,
 		);
 	}
 	if (res.status !== 200) {
@@ -90,7 +95,7 @@ export async function fetchRichDescription(
 	const url = new URL(`${ENDPOINT}/${encodeURIComponent(volumeId)}`);
 	url.searchParams.set("key", apiKey);
 	try {
-		const res = await requestUrl({ url: url.toString(), throw: false });
+		const res = await requestWithRetry({ url: url.toString() });
 		if (res.status !== 200) return null;
 		const body = res.json as { volumeInfo?: { description?: string } } | undefined;
 		const html = body?.volumeInfo?.description;

@@ -2,8 +2,8 @@
 // (more likely for obscure German or self-published titles). Keyless. Its job
 // is to *find the book*; cover handling stays with Apple → Google as elsewhere.
 
-import { requestUrl } from "obsidian";
 import { asIsbnQuery, type BookResult } from "../model";
+import { requestWithRetry } from "./http";
 
 const ENDPOINT = "https://openlibrary.org/search.json";
 const LIMIT = 5;
@@ -42,10 +42,9 @@ export async function searchOpenLibrary(query: string): Promise<BookResult[]> {
 	);
 	let res;
 	try {
-		res = await requestUrl({
+		res = await requestWithRetry({
 			url: url.toString(),
 			headers: { "User-Agent": USER_AGENT },
-			throw: false,
 		});
 	} catch {
 		throw new OpenLibraryError(
@@ -55,6 +54,11 @@ export async function searchOpenLibrary(query: string): Promise<BookResult[]> {
 	if (res.status === 429) {
 		throw new OpenLibraryError(
 			"Open Library is rate-limiting this plugin (status 429). Try Google, or try again later.",
+		);
+	}
+	if (res.status >= 500) {
+		throw new OpenLibraryError(
+			`Open Library is temporarily unavailable (status ${res.status}) after retrying. Try again in a moment, or switch to another store.`,
 		);
 	}
 	if (res.status !== 200) {
