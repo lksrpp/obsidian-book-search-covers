@@ -7,8 +7,10 @@ import { asIsbnQuery, type BookResult } from "../model";
 
 const ENDPOINT = "https://openlibrary.org/search.json";
 const LIMIT = 5;
-// Open Library asks for a descriptive User-Agent with contact info.
-const USER_AGENT = "obsidian-book-search-covers (https://github.com/lksrpp)";
+// A descriptive User-Agent with contact info, as Open Library asks for.
+const USER_AGENT = "book-search-covers (+https://github.com/lksrpp)";
+
+export class OpenLibraryError extends Error {}
 
 interface OlDoc {
 	title?: string;
@@ -23,7 +25,11 @@ interface OlDoc {
 	cover_i?: number;
 }
 
-/** Search Open Library. Returns up to 5 normalized results, or [] on failure. */
+/**
+ * Search Open Library. Returns up to 5 normalized results, or throws
+ * OpenLibraryError (with the HTTP status in the message) so the caller can
+ * surface a clear Notice instead of a silent "no results" — mirrors Google.
+ */
 export async function searchOpenLibrary(query: string): Promise<BookResult[]> {
 	const url = new URL(ENDPOINT);
 	// An ISBN-shaped query becomes the precise isbn: field lookup.
@@ -34,18 +40,28 @@ export async function searchOpenLibrary(query: string): Promise<BookResult[]> {
 		"fields",
 		"title,subtitle,author_name,first_publish_year,number_of_pages_median,isbn,subject,language,publisher,cover_i",
 	);
+	let res;
 	try {
-		const res = await requestUrl({
+		res = await requestUrl({
 			url: url.toString(),
 			headers: { "User-Agent": USER_AGENT },
 			throw: false,
 		});
-		if (res.status !== 200) return [];
-		const body = res.json as { docs?: OlDoc[] } | undefined;
-		return (body?.docs ?? []).map(normalize);
 	} catch {
-		return [];
+		throw new OpenLibraryError(
+			"Could not reach Open Library. Check your internet connection.",
+		);
 	}
+	if (res.status === 429) {
+		throw new OpenLibraryError(
+			"Open Library is rate-limiting this plugin (status 429). Try Google, or try again later.",
+		);
+	}
+	if (res.status !== 200) {
+		throw new OpenLibraryError(`Open Library returned status ${res.status}.`);
+	}
+	const body = res.json as { docs?: OlDoc[] } | undefined;
+	return (body?.docs ?? []).map(normalize);
 }
 
 function normalize(d: OlDoc): BookResult {
