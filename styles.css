@@ -403,6 +403,18 @@ body.is-mobile .bsc-cover-card-img {
 .bsc-settings-intro strong {
 	color: var(--text-normal);
 }
+/* The template editor needs the full row width, so this row stacks instead of
+   putting the control in the narrow right-hand column. The reset button sits
+   above the textarea, aligned right. */
+.bsc-template-row {
+	display: block;
+}
+.bsc-template-row .setting-item-control {
+	flex-direction: column;
+	align-items: flex-end;
+	width: 100%;
+	margin-top: 0.75em;
+}
 .bsc-template-input {
 	width: 100%;
 	font-family: var(--font-monospace);
@@ -414,6 +426,16 @@ body.is-mobile .bsc-cover-card-img {
 }
 .bsc-template-input:disabled {
 	opacity: 0.5;
+}
+/* Appended to a setting's description when its value points at something that
+   isn't there. Hidden until it has something to say. */
+.bsc-setting-warning {
+	display: none;
+	margin-top: 0.4em;
+	color: var(--text-warning);
+}
+.bsc-setting-warning.is-visible {
+	display: block;
 }
 .bsc-variables {
 	margin-top: 0.75em;
@@ -506,13 +528,18 @@ body.is-mobile .bsc-cover-card-img {
 	padding: 0.2em 0.7em;
 	cursor: pointer;
 }
-/* Grid with a fixed row count so stores flow top-to-bottom, 8 per column, instead of
-   across rows. (CSS multicol is avoided here: it's only partially supported, notably
-   on the WebKit engine Obsidian Mobile uses, especially inside scrolling containers.) */
+/* Grid with a fixed row count so stores flow top-to-bottom, 11 per column, instead
+   of across rows. (CSS multicol is avoided here: it's only partially supported,
+   notably on the WebKit engine Obsidian Mobile uses, especially inside scrolling
+   containers.)
+
+   11 rows keeps the 22 stores in two columns. Three columns overflowed the stock
+   settings pane, and the item width can't shrink to compensate — it's set by the
+   longest label ("Google GB (United Kingdom)"). */
 .bsc-store-select-list {
 	display: grid;
 	grid-auto-flow: column;
-	grid-template-rows: repeat(8, auto);
+	grid-template-rows: repeat(11, auto);
 	gap: 0 1em;
 	overflow-x: auto;
 }

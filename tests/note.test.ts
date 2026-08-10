@@ -5,6 +5,7 @@ import {
 	createTemplateFile,
 	loadNoteTemplate,
 	matchesBook,
+	resolveTemplateFile,
 	sanitizeFileName,
 } from "../src/note";
 import type { BookResult } from "../src/model";
@@ -156,5 +157,29 @@ describe("sanitizeFileName", () => {
 
 	it("falls back to Untitled", () => {
 		expect(sanitizeFileName("???")).toBe("Untitled");
+	});
+});
+
+// The settings tab warns about a template file that won't resolve, using this
+// exact lookup — a stricter check there would flag paths that actually work.
+describe("resolveTemplateFile", () => {
+	it("finds an exact path", () => {
+		const { app } = fakeVault({ "Templates/Book.md": "x" });
+		expect(resolveTemplateFile(app, "Templates/Book.md")).not.toBeNull();
+	});
+
+	it("tolerates a missing .md extension", () => {
+		const { app } = fakeVault({ "Templates/Book.md": "x" });
+		expect(resolveTemplateFile(app, "Templates/Book")).not.toBeNull();
+	});
+
+	it("normalizes redundant separators", () => {
+		const { app } = fakeVault({ "Templates/Book.md": "x" });
+		expect(resolveTemplateFile(app, "/Templates//Book.md")).not.toBeNull();
+	});
+
+	it("returns null when the file is absent", () => {
+		const { app } = fakeVault({ "Templates/Book.md": "x" });
+		expect(resolveTemplateFile(app, "Templates/Missing.md")).toBeNull();
 	});
 });

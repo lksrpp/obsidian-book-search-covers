@@ -114,6 +114,30 @@ describe("declarative setting definitions", () => {
 	});
 });
 
+describe("note template description", () => {
+	/** The "Note template" row's description for a given template-file setting. */
+	function descFor(templateFile: string): string {
+		const definitions = tab({ templateFile }).tab.getSettingDefinitions();
+		const row = definitions
+			.flatMap((group) => ("items" in group ? (group.items ?? []) : []))
+			.find((item) => "name" in item && item.name === "Note template");
+		return row && "desc" in row && typeof row.desc === "string" ? row.desc : "";
+	}
+
+	it("describes what the template does when it is in use", () => {
+		expect(descFor("")).toContain("every new book note");
+		expect(descFor("")).not.toContain("Not in use");
+	});
+
+	// The inline editor greys out when a template file is set; the description
+	// is what explains why, so it has to follow that state.
+	it("explains the greyed-out editor when a template file is set", () => {
+		const desc = descFor("Templates/Book template.md");
+		expect(desc).toContain("Not in use");
+		expect(desc).toContain("Clear that field");
+	});
+});
+
 describe("control value round-trip", () => {
 	it("reads the current setting", () => {
 		const { tab: t } = tab({ coverProperty: "artwork" });

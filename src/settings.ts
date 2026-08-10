@@ -2,6 +2,7 @@ import {
 	App,
 	ButtonComponent,
 	DropdownComponent,
+	debounce,
 	Notice,
 	PluginSettingTab,
 	Setting,
@@ -11,7 +12,7 @@ import {
 	type SettingGroupItem,
 } from "obsidian";
 import type BookSearchCoverPlugin from "./main";
-import { createTemplateFile } from "./note";
+import { createTemplateFile, resolveTemplateFile } from "./note";
 import { DEFAULT_TEMPLATE, VARIABLE_DOCS } from "./template";
 import { FileSuggest } from "./ui/file-suggest";
 import { FolderSuggest } from "./ui/folder-suggest";
@@ -274,6 +275,9 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 	private switcherPanelEl?: HTMLElement;
 	private switcherOpen = false;
 	private templateInput?: HTMLTextAreaElement;
+	private templateDescEl?: HTMLElement;
+	private templateFileDescEl?: HTMLElement;
+	private templateFileWarningEl?: HTMLElement;
 	private fileNameInput?: HTMLInputElement;
 	private templateFileInput?: HTMLInputElement;
 
@@ -349,7 +353,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					},
 					{
 						name: "Cover size",
-						desc: "Cover width in pixels requested from Apple/Google (clamped to 100–2000). 600, 800, or 1400 are common.",
+						desc: "Cover width in pixels requested from Apple/Google. 600, 800, or 1400 are common.",
 						aliases: ["resolution", "pixels", "width", "quality"],
 						control: {
 							type: "number",
@@ -394,13 +398,13 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					},
 					{
 						name: "Note template",
-						desc: "The whole note, frontmatter and body, with {{variable}} placeholders. Ignored if a template file is set below.",
+						desc: this.noteTemplateDesc(),
 						aliases: ["frontmatter", "body", "variables", "placeholder"],
 						render: (setting) => this.renderNoteTemplate(setting),
 					},
 					{
 						name: "Template file",
-						desc: "Power users: use a note in your vault as the template instead, editable like any note, with the same {{variables}}. Overrides the inline template above; leave empty to use it.",
+						desc: "Set a note in your vault as the template instead. You can use the same variables. Leave this field empty to use the template above.",
 						aliases: ["templater", "file", "variables"],
 						render: (setting) => this.renderTemplateFile(setting),
 					},
@@ -758,6 +762,10 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 	 */
 	private renderNoteTemplate(setting: Setting): void {
 		const s = this.plugin.settings;
+		// A whole note's worth of template doesn't fit the narrow control
+		// column, so this row stacks: name and description first, editor below.
+		setting.settingEl.addClass("bsc-template-row");
+		this.templateDescEl = setting.descEl;
 		setting
 			.addExtraButton((b) =>
 				b
@@ -781,14 +789,63 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		this.syncTemplateEditor();
 	}
 
-	private syncTemplateEditor(): void {
-		if (this.templateInput) {
-			this.templateInput.disabled = this.plugin.settings.templateFile !== "";
-		}
+	/**
+	 * The inline editor's description doubles as the explanation for why it
+	 * greys out, so it describes the current state rather than stating the
+	 * precedence rule up front. Shared with `sections()` so the declarative
+	 * definition and the in-place update below can't disagree.
+	 */
+	private noteTemplateDesc(): string {
+		return this.plugin.settings.templateFile !== ""
+			? "Not in use. The template file below provides the layout instead. Clear that field to edit this template again."
+			: "The layout every new book note is created from, frontmatter included. Variables like {{title}} are filled in from the book.";
 	}
+
+	private syncTemplateEditor(): void {
+		const usingFile = this.plugin.settings.templateFile !== "";
+		if (this.templateInput) this.templateInput.disabled = usingFile;
+		// Tracks the file field as it's typed into, not just on re-render.
+		this.templateDescEl?.setText(this.noteTemplateDesc());
+		this.syncTemplateFileWarning();
+	}
+
+	/**
+	 * Flag a configured template file that isn't in the vault. Note creation
+	 * already copes — it falls back to the inline template with a notice — but
+	 * only once the user has searched and picked an edition. Saying it here
+	 * turns a mid-flow surprise into something visible while configuring.
+	 */
+	private syncTemplateFileWarning(): void {
+		const descEl = this.templateFileDescEl;
+		if (!descEl) return;
+
+		// The declarative renderer may rebuild the description between renders,
+		// so re-create the line rather than writing into a detached node.
+		let warningEl = this.templateFileWarningEl;
+		if (!warningEl?.isConnected || warningEl.parentElement !== descEl) {
+			warningEl = descEl.createDiv({ cls: "bsc-setting-warning" });
+			this.templateFileWarningEl = warningEl;
+		}
+
+		const raw = this.plugin.settings.templateFile.trim();
+		const missing = raw !== "" && !resolveTemplateFile(this.app, raw);
+		warningEl.toggleClass("is-visible", missing);
+		warningEl.setText(
+			missing ? `“${raw}” is not in your vault. The template above will be used instead.` : "",
+		);
+	}
+
+	/**
+	 * The same sync, deferred while the template file field is being typed
+	 * into. Both halves flip on the first character — the editor greys out and
+	 * its description rewrites — which reads as flicker mid-path. Settling first
+	 * keeps them in step and lets the row change once, when the user pauses.
+	 */
+	private readonly syncTemplateEditorSoon = debounce(() => this.syncTemplateEditor(), 400, true);
 
 	private renderTemplateFile(setting: Setting): void {
 		const s = this.plugin.settings;
+		this.templateFileDescEl = setting.descEl;
 		setting
 			.addText((t) => {
 				this.templateFileInput = t.inputEl;
@@ -796,7 +853,7 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 					.setValue(s.templateFile)
 					.onChange(async (v) => {
 						s.templateFile = v.trim();
-						this.syncTemplateEditor();
+						this.syncTemplateEditorSoon();
 						await this.plugin.saveSettings();
 					});
 				t.inputEl.addClass("bsc-path-input");
@@ -816,6 +873,9 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 							const path = await createTemplateFile(this.app, target, content);
 							this.templateFileInput.value = path;
 							this.templateFileInput.trigger("input");
+							// A deliberate click, not typing — flip the row at once
+							// rather than letting the debounce hold it back.
+							this.syncTemplateEditor();
 							new Notice(`Using template file “${path}”.`);
 						} catch (e) {
 							new Notice(e instanceof Error ? e.message : "Could not create the template file.");

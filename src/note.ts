@@ -91,8 +91,12 @@ export async function loadNoteTemplate(
 	return settings.noteTemplate.trim() === "" ? DEFAULT_TEMPLATE : settings.noteTemplate;
 }
 
-/** Find the configured template file, tolerating a missing `.md` extension. */
-function resolveTemplateFile(app: App, raw: string): TFile | null {
+/**
+ * Find the configured template file, tolerating a missing `.md` extension.
+ * Exported so the settings tab can warn about a path that won't resolve using
+ * exactly the lookup note creation performs.
+ */
+export function resolveTemplateFile(app: App, raw: string): TFile | null {
 	for (const candidate of [raw, `${raw}.md`]) {
 		const f = app.vault.getAbstractFileByPath(normalizePath(candidate));
 		if (f instanceof TFile) return f;
