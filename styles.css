@@ -400,15 +400,6 @@ body.is-mobile .bsc-cover-card-img {
 .bsc-settings-intro p {
 	margin: 0.5em 0;
 }
-.bsc-settings-intro ul {
-	/* Flush with the heading and the paragraph — no browser list indent. */
-	list-style: none;
-	margin: 0;
-	padding: 0;
-}
-.bsc-settings-intro li {
-	margin-bottom: 0.4em;
-}
 .bsc-settings-intro strong {
 	color: var(--text-normal);
 }
@@ -442,6 +433,15 @@ body.is-mobile .bsc-cover-card-img {
 .bsc-variables-desc {
 	color: var(--text-muted);
 }
+/* Command names are far too long for a max-content label column; stack the
+   name above its description instead. */
+.bsc-settings-intro .bsc-variables-grid {
+	grid-template-columns: 1fr;
+	gap: 0.15em 0;
+}
+.bsc-settings-intro .bsc-variables-desc {
+	margin-bottom: 0.4em;
+}
 /* Summary button carries a Lucide chevron so it reads as a dropdown trigger;
    it rotates to point up while the panel is open. */
 .bsc-store-select-toggle {
@@ -463,6 +463,28 @@ body.is-mobile .bsc-cover-card-img {
 /* Expanding checkbox panel: a bordered surface under the setting row. */
 .bsc-store-select {
 	margin-top: -0.5em;
+}
+/* The panel hangs off the setting row itself (Obsidian's declarative renderer
+   hands out a row, never the container), so let the row wrap and give the
+   panel a line of its own. */
+.bsc-store-select-row {
+	flex-wrap: wrap;
+}
+.bsc-store-select-row .bsc-store-select {
+	flex-basis: 100%;
+	margin-top: 0;
+}
+/* Pre-1.13 only: reference content that 1.13 shows as a navigable sub-page
+   collapses into a disclosure block instead. The summary is the visible label,
+   so the row's own name/control columns are hidden. */
+.bsc-disclosure-row {
+	display: block;
+	border-top: none;
+	padding-top: 0;
+}
+.bsc-disclosure-row .setting-item-info,
+.bsc-disclosure-row .setting-item-control {
+	display: none;
 }
 .bsc-store-select.is-open {
 	margin-bottom: 1em;
