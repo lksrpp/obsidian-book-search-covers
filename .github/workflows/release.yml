@@ -1,8 +1,11 @@
-# Builds the plugin and creates a draft GitHub release with the assets the
-# Obsidian directory expects (main.js, manifest.json, styles.css) whenever a
-# version tag is pushed. The tag must equal manifest.json's version, no "v"
-# prefix: git tag -a 1.0.0 -m "1.0.0" && git push origin 1.0.0
-# Review the draft on GitHub and publish it manually.
+# Builds the plugin and attaches the assets the Obsidian directory expects
+# (main.js, manifest.json, styles.css) to the GitHub release for a version tag.
+# The tag must equal manifest.json's version, no "v" prefix. Two ways in:
+#   - push the tag (git tag -a 1.0.0 -m "1.0.0" && git push origin 1.0.0):
+#     a draft release is created; review it on GitHub and publish it manually.
+#   - publish a release from the GitHub UI with a new tag: the release
+#     already exists, so the assets are uploaded to it (a minute or two after
+#     publishing).
 name: Release Obsidian plugin
 
 on:
@@ -38,12 +41,17 @@ jobs:
             main.js
             styles.css
 
-      - name: Create draft release
+      - name: Create draft release or attach assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          gh release create "$tag" \
-            --title="$tag" \
-            --draft \
-            main.js manifest.json styles.css
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" --clobber \
+              main.js manifest.json styles.css
+          else
+            gh release create "$tag" \
+              --title="$tag" \
+              --draft \
+              main.js manifest.json styles.css
+          fi
