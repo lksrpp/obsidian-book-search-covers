@@ -24,6 +24,14 @@ Users install exactly three files, attached as assets to a GitHub release: `main
 3. The `release.yml` GitHub Action triggers on the tag: it runs the tests, builds, and creates a **draft** release with the three assets attached.
 4. Review the draft at GitHub → Releases, add release notes, and **publish**. Nothing is visible to users until this step.
 
+### From the GitHub UI
+
+Without a local checkout, steps 2–4 can happen in the browser instead:
+
+1. Bump `version` in `manifest.json`, `package.json` and `package-lock.json` (both `version` fields at the top), and add the version to `versions.json`, all on `main`.
+2. GitHub → Releases → *Draft a new release*. Under *Choose a tag*, type the new version (no `v` prefix) to create it on publish, target `main`. Add the release notes and **publish**.
+3. Publishing creates the tag, which runs `release.yml`. It sees the release already exists and uploads the three assets to it. Until that finishes (a minute or two, see the Actions tab), the release is public without assets.
+
 If the workflow fails, fix the problem on `main`, then move the tag:
 
 ```bash
