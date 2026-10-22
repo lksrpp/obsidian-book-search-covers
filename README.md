@@ -75,7 +75,7 @@ Templates use simple `{{variable}}` placeholders in the frontmatter, body, or ti
 | `{{seriesName}}` | Series name, if known |
 | `{{seriesNumber}}` | Number within the series, if known |
 | `{{source}}` | Search provider: `google` or `openlibrary` |
-| `{{cover}}` | Cover URL or vault path, per the cover storage mode. A vault path is URL-encoded only as a markdown link target, e.g. `![]({{cover}})` |
+| `{{cover}}` | Cover URL or vault path, per the cover storage mode |
 | `{{date}}` | Note creation date, YYYY-MM-DD |
 | `{{datetime}}` | Note creation date and time, YYYY-MM-DD HH:mm:ss |
 
