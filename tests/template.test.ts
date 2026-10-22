@@ -153,3 +153,36 @@ describe("renderNote frontmatter/body split", () => {
 		expect(out).toBe('# "Q"');
 	});
 });
+
+describe("renderNote cover paths", () => {
+	const LOCAL = "Books/cover/Mein Weltbild - Albert Einstein (1934).jpg";
+
+	it("keeps a vault path plain in frontmatter, wikilinks and plain text", () => {
+		const template =
+			'---\ncover: "{{cover}}"\nlink: "[[{{cover}}]]"\n---\n![[{{cover}}|250]]\n{{cover}}\n';
+		const out = renderNote(template, buildVars(BOOK, LOCAL));
+		expect(out).toContain(`cover: "${LOCAL}"`);
+		expect(out).toContain(`link: "[[${LOCAL}]]"`);
+		expect(out).toContain(`![[${LOCAL}|250]]`);
+		expect(out).not.toContain("%20");
+	});
+
+	it("encodes a vault path as a markdown link target", () => {
+		const out = renderNote("![cover|250]({{cover}})", buildVars(BOOK, LOCAL));
+		expect(out).toBe(
+			"![cover|250](Books/cover/Mein%20Weltbild%20-%20Albert%20Einstein%20%281934%29.jpg)",
+		);
+	});
+
+	it("leaves an angle-bracketed link target plain", () => {
+		const out = renderNote("![cover](<{{cover}}>)", buildVars(BOOK, LOCAL));
+		expect(out).toBe(`![cover](<${LOCAL}>)`);
+	});
+
+	it("never re-encodes a remote URL", () => {
+		const url = "https://books.google.com/books/content?id=x&fife=w800";
+		const out = renderNote(`---\ncover: "{{cover}}"\n---\n![]({{cover}})`, buildVars(BOOK, url));
+		expect(out).toContain(`cover: "${url}"`);
+		expect(out).toContain(`![](${url})`);
+	});
+});

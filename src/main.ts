@@ -13,7 +13,6 @@ import {
 	collectCoverCandidates,
 	type CoverCandidate,
 	downloadCover,
-	encodeCoverPath,
 } from "./cover";
 import { CoverPickerModal } from "./ui/cover-picker";
 import {
@@ -122,7 +121,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 			let coverRef = book.providerCoverUrl ?? "";
 			if (coverRef && overrides.coverMode === "download") {
 				const localPath = await downloadCover(this.app, coverRef, basename, this.settings);
-				if (localPath) coverRef = encodeCoverPath(localPath);
+				if (localPath) coverRef = localPath;
 				else new Notice("Cover download failed; linking the remote URL.");
 			}
 			await this.finishCreate(book, coverRef, path);
@@ -176,7 +175,7 @@ export default class BookSearchCoverPlugin extends Plugin {
 		if (coverMode === "download") {
 			// Name the cover after the note's basename so they stay paired.
 			const path = await downloadCover(this.app, candidate.url, file.basename, this.settings);
-			if (path) coverRef = encodeCoverPath(path);
+			if (path) coverRef = path;
 			else new Notice("Cover download failed; linking the remote URL.");
 		}
 

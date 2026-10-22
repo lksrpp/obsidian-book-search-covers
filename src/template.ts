@@ -74,7 +74,10 @@ export const VARIABLE_DOCS: ReadonlyArray<{ name: string; desc: string }> = [
 	{ name: "seriesName", desc: "Series name, if known" },
 	{ name: "seriesNumber", desc: "Number within the series, if known" },
 	{ name: "source", desc: "Search provider: google or openlibrary" },
-	{ name: "cover", desc: "Cover URL or vault path, per the cover storage mode" },
+	{
+		name: "cover",
+		desc: "Cover URL or vault path, per the cover storage mode. A vault path is URL-encoded only as a markdown link target, e.g. ![]({{cover}})",
+	},
 	{ name: "date", desc: "Note creation date, YYYY-MM-DD" },
 	{ name: "datetime", desc: "Note creation date and time, YYYY-MM-DD HH:mm:ss" },
 ];
@@ -196,7 +199,7 @@ function expandYamlLists(block: string, vars: TemplateVars): string {
 function substitute(text: string, vars: TemplateVars, escapeForYaml: boolean): string {
 	return text.replace(
 		/\{\{\s*(\w+)(?::([^}]*))?\s*\}\}/g,
-		(match, key: string, arg: string | undefined) => {
+		(match, key: string, arg: string | undefined, offset: number) => {
 			// Only descriptionCallout takes an argument (a custom callout
 			// title, e.g. {{descriptionCallout:Inhalt}}). Any other token with
 			// an argument stays literal, exactly as before.
@@ -205,8 +208,37 @@ function substitute(text: string, vars: TemplateVars, escapeForYaml: boolean): s
 				arg !== undefined
 					? descriptionCallout(String(vars.description ?? ""), arg.trim())
 					: (vars[key] ?? "");
-			const s = Array.isArray(value) ? value.join(", ") : value;
+			let s = Array.isArray(value) ? value.join(", ") : value;
+			if (key === "cover" && isLinkDestination(text, offset) && isVaultPath(s)) {
+				s = encodeVaultPath(s);
+			}
 			return escapeForYaml ? escapeYamlDouble(s) : s;
 		},
+	);
+}
+
+/** True when the token at `offset` opens a markdown link target: `](here)`. */
+function isLinkDestination(text: string, offset: number): boolean {
+	return text.slice(Math.max(0, offset - 2), offset) === "](";
+}
+
+/** A vault-relative path, as opposed to a remote URL (any `scheme:` prefix). */
+function isVaultPath(s: string): boolean {
+	return s !== "" && !/^[a-z][a-z0-9+.-]*:/i.test(s);
+}
+
+/**
+ * Percent-encode a vault path so it is a valid `![](…)` markdown link target.
+ * encodeURI handles spaces/umlauts but leaves `#?()` alone — those break
+ * markdown links (or Obsidian's subpath parsing), so encode them by hand.
+ *
+ * Only applied where `{{cover}}` sits directly in a markdown link target.
+ * Everywhere else (frontmatter, `[[wikilinks]]`, Bases) the path stays plain:
+ * Obsidian resolves those literally, so `%20` would break them.
+ */
+export function encodeVaultPath(path: string): string {
+	return encodeURI(path).replace(
+		/[#?()]/g,
+		(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
 	);
 }

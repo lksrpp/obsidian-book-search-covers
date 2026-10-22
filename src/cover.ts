@@ -108,18 +108,6 @@ function dedupeByUrl(candidates: CoverCandidate[]): CoverCandidate[] {
 }
 
 /**
- * Percent-encode a vault path so it is a valid `![](…)` markdown link target.
- * encodeURI handles spaces/umlauts but leaves `#?()` alone — those break
- * markdown links (or Obsidian's subpath parsing), so encode them by hand.
- */
-export function encodeCoverPath(path: string): string {
-	return encodeURI(path).replace(
-		/[#?()]/g,
-		(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
-	);
-}
-
-/**
  * Download a cover into the vault and return its vault-relative path, or null
  * on failure. The file is named after `basename` (already filesystem-safe).
  */
