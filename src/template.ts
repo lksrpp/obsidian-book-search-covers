@@ -76,7 +76,7 @@ export const VARIABLE_DOCS: ReadonlyArray<{ name: string; desc: string }> = [
 	{ name: "source", desc: "Search provider: google or openlibrary" },
 	{
 		name: "cover",
-		desc: "Cover URL or vault path, per the cover storage mode. A vault path is URL-encoded only as a markdown link target, e.g. ![]({{cover}})",
+		desc: "Cover URL or vault path, per the cover storage mode. In markdown links such as ![]({{cover}}), the vault path is URL-encoded; everywhere else it is the plain path.",
 	},
 	{ name: "date", desc: "Note creation date, YYYY-MM-DD" },
 	{ name: "datetime", desc: "Note creation date and time, YYYY-MM-DD HH:mm:ss" },
