@@ -237,8 +237,36 @@ describe("replaceCoverInBody", () => {
 	});
 
 	it("replaces a vault path with a remote URL, unencoded", () => {
-		const r = replaceCoverInBody(`![cover|250](${OLD_ENC})\n![[${OLD}]]`, OLD, URL);
-		expect(r.content).toBe(`![cover|250](${URL})\n![[${URL}]]`);
+		const r = replaceCoverInBody(`![cover|250](${OLD_ENC})\nCover: ${OLD}`, OLD, URL);
+		expect(r).toEqual({ content: `![cover|250](${URL})\nCover: ${URL}`, count: 2 });
+	});
+
+	// `![[https://…]]` doesn't render, so the embed keeps showing the old cover.
+	it("leaves a wikilink embed alone when the new cover is a URL", () => {
+		const content = `![[${OLD}|250]]\n![](${OLD_ENC})`;
+		const r = replaceCoverInBody(content, OLD, URL);
+		expect(r).toEqual({ content: `![[${OLD}|250]]\n![](${URL})`, count: 1 });
+		expect(replaceCoverInBody(`![[${OLD}]]`, OLD, URL)).toEqual({
+			content: `![[${OLD}]]`,
+			count: 0,
+		});
+	});
+
+	it("only replaces whole values, not part of a longer path or URL", () => {
+		const old = "covers/Dune.jpg";
+		const content = [
+			"![](archive/covers/Dune.jpg)",
+			"![](covers/Dune.jpg.bak)",
+			"![](covers/Dune.jpg2)",
+			`![](${URL}?w=2)`,
+		].join("\n");
+		expect(replaceCoverInBody(content, old, NEW).count).toBe(0);
+		expect(replaceCoverInBody(content, URL, NEW).count).toBe(0);
+	});
+
+	it("still replaces a value at the end of a sentence or line", () => {
+		const r = replaceCoverInBody(`Cover: covers/Dune.jpg.\nAlt: covers/Dune.jpg`, "covers/Dune.jpg", NEW);
+		expect(r).toEqual({ content: `Cover: ${NEW}.\nAlt: ${NEW}`, count: 2 });
 	});
 
 	it("never touches the frontmatter block", () => {

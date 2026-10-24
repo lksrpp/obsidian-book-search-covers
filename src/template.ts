@@ -275,26 +275,37 @@ export function replaceCoverInBody(
 		const plain = safeDecodeUri(old);
 		forms.add(plain).add(encodeVaultPath(plain));
 	}
-	// Longest first, so the regex never stops at a shorter form's prefix.
+	// Longest first, so the regex never stops at a shorter form's prefix. The
+	// lookarounds keep it to whole values: not `archive/covers/x.jpg`,
+	// `covers/x.jpg.bak` or `…/a.jpg?w=2`, but a sentence's final period is fine.
+	const alternatives = [...forms]
+		.sort((a, b) => b.length - a.length)
+		.map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+		.join("|");
 	const pattern = new RegExp(
-		[...forms]
-			.sort((a, b) => b.length - a.length)
-			.map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-			.join("|"),
-		"g",
+		`(?<![\\p{L}\\p{N}_%/\\\\.-])(?:${alternatives})(?![\\p{L}\\p{N}_%/\\\\-]|[.?#&=+~][^\\s)\\]|>"'])`,
+		"gu",
 	);
 
 	const fm = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
 	const block = fm ? fm[0] : "";
 	const body = content.slice(block.length);
+	const newIsPath = isVaultPath(newValue);
 	let count = 0;
-	const replaced = body.replace(pattern, (_match, offset: number) => {
+	const replaced = body.replace(pattern, (match: string, offset: number) => {
+		// `![[https://…]]` doesn't render; leave such an embed on the old cover.
+		if (!newIsPath && isInsideWikiLink(body, offset)) return match;
 		count += 1;
-		return isLinkDestination(body, offset) && isVaultPath(newValue)
-			? encodeVaultPath(newValue)
-			: newValue;
+		return newIsPath && isLinkDestination(body, offset) ? encodeVaultPath(newValue) : newValue;
 	});
 	return { content: count > 0 ? block + replaced : content, count };
+}
+
+/** True when `offset` sits between an unclosed `[[` and its `]]` on the same line. */
+function isInsideWikiLink(text: string, offset: number): boolean {
+	const before = text.slice(0, offset);
+	const open = before.lastIndexOf("[[");
+	return open !== -1 && open > before.lastIndexOf("]]") && !before.slice(open).includes("\n");
 }
 
 /**
