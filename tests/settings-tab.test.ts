@@ -167,7 +167,23 @@ describe("control value round-trip", () => {
 		expect(settings.coverProperty).toBe(DEFAULT_SETTINGS.coverProperty);
 	});
 
-	it("trims the note folder but allows the vault root", async () => {
+	it("replaces the cover in the note body by default, as a toggle", () => {
+		expect(DEFAULT_SETTINGS.replaceCoverInBody).toBe(true);
+		const row = rows().find((r) => "name" in r && r.name === "Replace cover in note body");
+		expect(row && "control" in row && row.control?.type).toBe("toggle");
+		expect(tab().tab.getControlValue("replaceCoverInBody")).toBe(true);
+	});
+
+	it("toggles replacing the cover in the note body", async () => {
+		const { tab: t, settings, saveCount } = tab();
+		await t.setControlValue("replaceCoverInBody", false);
+		expect(settings.replaceCoverInBody).toBe(false);
+		await t.setControlValue("replaceCoverInBody", true);
+		expect(settings.replaceCoverInBody).toBe(true);
+		expect(saveCount()).toBe(2);
+	});
+
+		it("trims the note folder but allows the vault root", async () => {
 		const { tab: t, settings } = tab();
 		await t.setControlValue("noteFolder", "  Library/Books  ");
 		expect(settings.noteFolder).toBe("Library/Books");

@@ -164,6 +164,8 @@ export interface BookSearchCoverSettings {
 	noteFolder: string;
 	/** Frontmatter property the "fetch cover" command writes into. */
 	coverProperty: string;
+	/** Also swap the old cover for the new one in the note body when "fetch cover" runs. */
+	replaceCoverInBody: boolean;
 	/** `{{var}}` template for the note basename. */
 	fileNameTemplate: string;
 	/**
@@ -193,6 +195,7 @@ export const DEFAULT_SETTINGS: BookSearchCoverSettings = {
 	coverFolder: "covers",
 	noteFolder: "Books",
 	coverProperty: "cover",
+	replaceCoverInBody: true,
 	fileNameTemplate: DEFAULT_FILENAME_TEMPLATE,
 	noteTemplate: DEFAULT_TEMPLATE,
 	templateFile: "",
@@ -374,6 +377,16 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 							defaultValue: DEFAULT_SETTINGS.coverProperty,
 						},
 					},
+					{
+						name: "Replace cover in note body",
+						desc: "When “Fetch or replace cover” sets a new cover, also replace the old cover's path or URL wherever it appears in the note body, e.g. in ![cover|250](…). Turn this off to only update the cover property.",
+						aliases: ["body", "embed", "image", "replace"],
+						control: {
+							type: "toggle",
+							key: "replaceCoverInBody",
+							defaultValue: DEFAULT_SETTINGS.replaceCoverInBody,
+						},
+					},
 				],
 			},
 			{
@@ -500,6 +513,9 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 			case "noteFolder":
 				s.noteFolder = String(value).trim();
 				break;
+			case "replaceCoverInBody":
+				s.replaceCoverInBody = value === true;
+				break;
 			default:
 				(s as unknown as Record<string, unknown>)[key] = value;
 		}
@@ -551,6 +567,11 @@ export class BookSearchCoverSettingTab extends PluginSettingTab {
 		const write = (value: unknown): void => void this.setControlValue(control.key, value);
 
 		switch (control.type) {
+			case "toggle":
+				setting.addToggle((t) => {
+					t.setValue(this.getControlValue(control.key) === true).onChange(write);
+				});
+				break;
 			case "dropdown":
 				setting.addDropdown((d) => {
 					for (const [value, label] of Object.entries(control.options)) {
