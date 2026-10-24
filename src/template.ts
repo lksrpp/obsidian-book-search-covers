@@ -223,7 +223,7 @@ function isLinkDestination(text: string, offset: number): boolean {
 }
 
 /** A vault-relative path, as opposed to a remote URL (any `scheme:` prefix). */
-function isVaultPath(s: string): boolean {
+export function isVaultPath(s: string): boolean {
 	return s !== "" && !/^[a-z][a-z0-9+.-]*:/i.test(s);
 }
 
@@ -241,4 +241,70 @@ export function encodeVaultPath(path: string): string {
 		/[#?()]/g,
 		(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
 	);
+}
+
+/**
+ * Split a cover property value into its wikilink wrapper and inner path:
+ * `![[covers/x.jpg|250]]` → `{ prefix: "![[", path: "covers/x.jpg", suffix: "|250]]" }`.
+ * Unwrapped values come back with an empty prefix and suffix.
+ */
+export function unwrapWikiLink(value: string): { prefix: string; path: string; suffix: string } {
+	const m = value.match(/^(!?\[\[)([^\]|]*)((?:\|[^\]]*)?\]\])$/);
+	if (!m) return { prefix: "", path: value, suffix: "" };
+	return { prefix: m[1] ?? "", path: m[2] ?? "", suffix: m[3] ?? "" };
+}
+
+/**
+ * Replace every occurrence of the old cover in the note body (never the
+ * frontmatter block) with the new one. `oldValue` is the raw property value; a
+ * `[[…]]` wrapper is stripped first. A vault path matches both plain and
+ * percent-encoded, since notes created before 1.1.4 hold the encoded form.
+ * The new value is encoded by the same rule `{{cover}}` follows: only directly
+ * inside a markdown link target `](…)`, and only for vault paths.
+ */
+export function replaceCoverInBody(
+	content: string,
+	oldValue: string,
+	newValue: string,
+): { content: string; count: number } {
+	const old = unwrapWikiLink(oldValue.trim()).path.trim();
+	if (old === "" || old === newValue) return { content, count: 0 };
+
+	const forms = new Set([old]);
+	if (isVaultPath(old)) {
+		const plain = safeDecodeUri(old);
+		forms.add(plain).add(encodeVaultPath(plain));
+	}
+	// Longest first, so the regex never stops at a shorter form's prefix.
+	const pattern = new RegExp(
+		[...forms]
+			.sort((a, b) => b.length - a.length)
+			.map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+			.join("|"),
+		"g",
+	);
+
+	const fm = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+	const block = fm ? fm[0] : "";
+	const body = content.slice(block.length);
+	let count = 0;
+	const replaced = body.replace(pattern, (_match, offset: number) => {
+		count += 1;
+		return isLinkDestination(body, offset) && isVaultPath(newValue)
+			? encodeVaultPath(newValue)
+			: newValue;
+	});
+	return { content: count > 0 ? block + replaced : content, count };
+}
+
+/**
+ * Undo `encodeVaultPath`. decodeURIComponent, not decodeURI, because the
+ * latter keeps `%23`/`%3F` encoded. Invalid encoding returns the input.
+ */
+function safeDecodeUri(s: string): string {
+	try {
+		return decodeURIComponent(s);
+	} catch {
+		return s;
+	}
 }

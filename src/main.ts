@@ -24,6 +24,7 @@ import {
 import { isbnFromArtworkUrl } from "./providers/apple";
 import { fetchRichDescription } from "./providers/google";
 import type { BookResult } from "./model";
+import { isVaultPath, replaceCoverInBody, unwrapWikiLink } from "./template";
 import type { CoverMode } from "./settings";
 
 export default class BookSearchCoverPlugin extends Plugin {
@@ -165,7 +166,10 @@ export default class BookSearchCoverPlugin extends Plugin {
 		).open();
 	}
 
-	/** Write the picked cover into the note's frontmatter (downloading first if chosen). */
+	/**
+	 * Write the picked cover into the note's frontmatter (downloading first if
+	 * chosen) and, when enabled, swap the old cover for it in the note body.
+	 */
 	private async applyCover(
 		file: TFile,
 		candidate: CoverCandidate,
@@ -184,14 +188,32 @@ export default class BookSearchCoverPlugin extends Plugin {
 		const foundIsbn =
 			candidate.source === "apple" ? isbnFromArtworkUrl(candidate.url) : undefined;
 
+		let oldValue = "";
 		await this.app.fileManager.processFrontMatter(
 			file,
 			(front: Record<string, unknown>) => {
-				front[this.settings.coverProperty] = coverRef;
+				const old = front[this.settings.coverProperty];
+				if (typeof old === "string") oldValue = old;
+				// Keep a `[[…]]` wrapper (e.g. from `cover: "[[{{cover}}]]"`) so
+				// the property stays a link. Not for URLs: `[[https://…]]` is no link.
+				const { prefix, suffix } = unwrapWikiLink(oldValue.trim());
+				front[this.settings.coverProperty] =
+					prefix && isVaultPath(coverRef) ? `${prefix}${coverRef}${suffix}` : coverRef;
 				if (foundIsbn && !front.isbn) front.isbn = foundIsbn;
 			},
 		);
-		new Notice(`Cover set from ${SOURCE_LABELS[candidate.source]}.`);
+
+		// The template's body usually embeds the cover too, e.g. ![cover|250](…).
+		let replaced = 0;
+		if (this.settings.replaceCoverInBody && oldValue !== "") {
+			await this.app.vault.process(file, (data) => {
+				const result = replaceCoverInBody(data, oldValue, coverRef);
+				replaced = result.count;
+				return result.content;
+			});
+		}
+		const where = replaced > 0 ? " (also replaced in the note)" : "";
+		new Notice(`Cover set from ${SOURCE_LABELS[candidate.source]}${where}.`);
 	}
 }
 

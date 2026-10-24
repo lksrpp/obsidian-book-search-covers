@@ -5,6 +5,8 @@ import {
 	escapeYamlDouble,
 	renderNote,
 	renderTemplate,
+	replaceCoverInBody,
+	unwrapWikiLink,
 } from "../src/template";
 import type { BookResult } from "../src/model";
 
@@ -184,5 +186,101 @@ describe("renderNote cover paths", () => {
 		const out = renderNote(`---\ncover: "{{cover}}"\n---\n![]({{cover}})`, buildVars(BOOK, url));
 		expect(out).toContain(`cover: "${url}"`);
 		expect(out).toContain(`![](${url})`);
+	});
+});
+
+describe("replaceCoverInBody", () => {
+	const OLD = "covers/Mein Weltbild - Albert Einstein.jpg";
+	const OLD_ENC = "covers/Mein%20Weltbild%20-%20Albert%20Einstein.jpg";
+	const NEW = "covers/Mein Weltbild (2).jpg";
+	const NEW_ENC = "covers/Mein%20Weltbild%20%282%29.jpg";
+	const URL = "https://is1-ssl.mzstatic.com/image/thumb/x/800x800bb.jpg";
+	const note = (fm: string, body: string) => `---\ncover: "${fm}"\n---\n${body}`;
+
+	it("replaces a pre-1.1.4 encoded path and encodes the new one in a link target", () => {
+		const r = replaceCoverInBody(note(OLD_ENC, `![cover|250](${OLD_ENC})\n`), OLD_ENC, NEW);
+		expect(r.count).toBe(1);
+		expect(r.content).toContain(`![cover|250](${NEW_ENC})`);
+	});
+
+	it("matches the encoded body form when the property holds the plain path", () => {
+		const r = replaceCoverInBody(`![cover|250](${OLD_ENC})`, OLD, NEW);
+		expect(r).toEqual({ content: `![cover|250](${NEW_ENC})`, count: 1 });
+	});
+
+	it("matches #?() encoded by hand, not only what encodeURI covers", () => {
+		const old = "covers/What? (Vol. #1).jpg";
+		const r = replaceCoverInBody("![](covers/What%3F%20%28Vol.%20%231%29.jpg)", old, NEW);
+		expect(r).toEqual({ content: `![](${NEW_ENC})`, count: 1 });
+	});
+
+	it("keeps the new path plain inside a wikilink embed", () => {
+		const r = replaceCoverInBody(`![[${OLD}|250]]`, OLD, NEW);
+		expect(r).toEqual({ content: `![[${NEW}|250]]`, count: 1 });
+	});
+
+	it("keeps the new path plain inside an angle-bracket link target", () => {
+		const r = replaceCoverInBody(`![cover](<${OLD}>)`, OLD, NEW);
+		expect(r).toEqual({ content: `![cover](<${NEW}>)`, count: 1 });
+	});
+
+	it("matches on the inner path of a wikilink property value", () => {
+		const r = replaceCoverInBody(`![](${OLD_ENC}) and ![[${OLD}]]`, `![[${OLD}]]`, NEW);
+		expect(r.content).toBe(`![](${NEW_ENC}) and ![[${NEW}]]`);
+		expect(r.count).toBe(2);
+	});
+
+	it("replaces a remote URL with a vault path", () => {
+		const r = replaceCoverInBody(`![cover|250](${URL})\nSource: ${URL}`, URL, NEW);
+		expect(r.content).toBe(`![cover|250](${NEW_ENC})\nSource: ${NEW}`);
+		expect(r.count).toBe(2);
+	});
+
+	it("replaces a vault path with a remote URL, unencoded", () => {
+		const r = replaceCoverInBody(`![cover|250](${OLD_ENC})\n![[${OLD}]]`, OLD, URL);
+		expect(r.content).toBe(`![cover|250](${URL})\n![[${URL}]]`);
+	});
+
+	it("never touches the frontmatter block", () => {
+		const content = note(OLD, `![cover|250](${OLD_ENC})`);
+		const r = replaceCoverInBody(content, OLD, NEW);
+		expect(r.content.startsWith(`---\ncover: "${OLD}"\n---\n`)).toBe(true);
+		expect(r.count).toBe(1);
+	});
+
+	it("finds the frontmatter block with CRLF line endings", () => {
+		const content = `---\r\ncover: "${URL}"\r\n---\r\n![](${URL})\r\n`;
+		const r = replaceCoverInBody(content, URL, NEW);
+		expect(r.content).toBe(`---\r\ncover: "${URL}"\r\n---\r\n![](${NEW_ENC})\r\n`);
+	});
+
+	it("leaves the content unchanged without an old value", () => {
+		const content = note("", `![cover|250](${OLD_ENC})`);
+		expect(replaceCoverInBody(content, "", NEW)).toEqual({ content, count: 0 });
+		expect(replaceCoverInBody(content, "   ", NEW)).toEqual({ content, count: 0 });
+	});
+
+	it("leaves the content unchanged when the old value is not in the body", () => {
+		const content = note(OLD, "# Just a title\n");
+		expect(replaceCoverInBody(content, OLD, NEW)).toEqual({ content, count: 0 });
+	});
+});
+
+describe("unwrapWikiLink", () => {
+	it("splits off a wikilink or embed wrapper, keeping an alias", () => {
+		expect(unwrapWikiLink("[[covers/a.jpg]]")).toEqual({
+			prefix: "[[",
+			path: "covers/a.jpg",
+			suffix: "]]",
+		});
+		expect(unwrapWikiLink("![[covers/a.jpg|250]]")).toEqual({
+			prefix: "![[",
+			path: "covers/a.jpg",
+			suffix: "|250]]",
+		});
+	});
+
+	it("passes plain values through", () => {
+		expect(unwrapWikiLink("covers/a.jpg")).toEqual({ prefix: "", path: "covers/a.jpg", suffix: "" });
 	});
 });
