@@ -61,7 +61,7 @@ Templates use simple `{{variable}}` placeholders in the frontmatter, body, or ti
 | `{{authors}}` | All authors, comma-separated |
 | `{{authorsYamlLinks}}` | Authors as a YAML list of `[[wikilinks]]` |
 | `{{description}}` | Publisher's description (body only, too long for frontmatter) |
-| `{{descriptionCallout}}` | Description as a collapsed callout; custom title via `{{descriptionCallout:My title}}` |
+| `{{descriptionCallout}}` | Description as a collapsed callout; `{{descriptionCallout+}}` starts it expanded; custom title via `{{descriptionCallout:My title}}` (combinable: `{{descriptionCallout+:My title}}`) |
 | `{{publisher}}` | Publisher name |
 | `{{publishedDate}}` | Raw publish date, e.g. 2021-05-04 |
 | `{{year}}` | 4-digit publish year |

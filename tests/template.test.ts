@@ -70,8 +70,26 @@ describe("descriptionCallout", () => {
 		expect(renderTemplate("{{descriptionCallout:Inhalt}}", buildVars(BOOK, ""))).toBe("");
 	});
 
-	it("leaves arguments on other variables literal", () => {
+	it("opens by default with a + marker, collapses with - or no marker", () => {
+		const vars = buildVars({ ...BOOK, description: "Blurb." }, "");
+		expect(renderTemplate("{{descriptionCallout+}}", vars)).toBe(
+			"> [!summary]+ Description\n> Blurb.",
+		);
+		expect(renderTemplate("{{descriptionCallout-}}", vars)).toBe(
+			"> [!summary]- Description\n> Blurb.",
+		);
+		expect(renderTemplate("{{descriptionCallout+:Inhalt}}", vars)).toBe(
+			"> [!summary]+ Inhalt\n> Blurb.",
+		);
+		expect(renderTemplate("{{ descriptionCallout-: Inhalt }}", vars)).toBe(
+			"> [!summary]- Inhalt\n> Blurb.",
+		);
+		expect(renderTemplate("{{descriptionCallout+}}", buildVars(BOOK, ""))).toBe("");
+	});
+
+	it("leaves arguments and fold markers on other variables literal", () => {
 		expect(renderTemplate("{{title:nope}}", buildVars(BOOK, ""))).toBe("{{title:nope}}");
+		expect(renderTemplate("{{title+}}", buildVars(BOOK, ""))).toBe("{{title+}}");
 	});
 });
 
